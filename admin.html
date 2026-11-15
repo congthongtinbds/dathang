@@ -574,7 +574,29 @@ function renderKho() {
 }
 function khoGroup(mp) { var it = KHO.filter(function (k) { return k.mp === mp; }); if (!it.length) return null; return { mp: mp, tg: it[0].tg, loai: it[0].loai, dt: it[0].dt, gc: it[0].gc, items: it.map(function (k) { return { s: k.s, t: k.t, m: k.m, q: k.q, g: k.g }; }) }; }
 function printKho(mp) { var g = khoGroup(mp); if (g) printDocs('kho', [g]); }
-function delKho(mp) { if (!confirm('Xoá phiếu ' + mp + '? Tồn kho sẽ được tính lại.')) return; run('adminKhoDelete', PASS, mp).then(function () { toast('Đã xoá ' + mp); loadAll(); }).catch(function (e) { alert(e.message); }); }
+/* Hỏi lại mật khẩu (ô nhập ẩn ký tự) trước thao tác quan trọng */
+function askPass(title, msg) {
+  return new Promise(function (ok) {
+    var o = document.createElement('div'); o.className = 'modal on'; o.style.alignItems = 'center';
+    o.innerHTML = '<div class="mbox" style="max-width:400px"><h2 style="margin-bottom:6px">' + esc(title) + '</h2><p class="note2" style="margin:0 0 10px">' + esc(msg) + '</p>' +
+      '<input type="password" class="f" id="ap_pw" placeholder="Nhập lại mật khẩu quản lý" style="width:100%" autocomplete="current-password">' +
+      '<div class="err" id="ap_err"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="btn sec" id="ap_no">Huỷ</button><button class="btn red" id="ap_ok">Xác nhận xoá</button></div></div>';
+    document.body.appendChild(o);
+    var pw = o.querySelector('#ap_pw'); pw.focus();
+    function done(v) { o.remove(); ok(v); }
+    o.querySelector('#ap_no').onclick = function () { done(null); };
+    o.onclick = function (e) { if (e.target === o) done(null); };
+    o.querySelector('#ap_ok').onclick = function () { if (!pw.value) { o.querySelector('#ap_err').textContent = 'Chưa nhập mật khẩu.'; return; } done(pw.value); };
+    pw.onkeydown = function (e) { if (e.key === 'Enter') o.querySelector('#ap_ok').click(); if (e.key === 'Escape') done(null); };
+  });
+}
+function delKho(mp) {
+  var g = khoGroup(mp), sl = 0; if (g) g.items.forEach(function (x) { sl += x.q; });
+  askPass('Xoá phiếu ' + mp, (g ? g.loai + ' · ' + g.items.length + ' mã · ' + sl + ' sp' + (g.dt ? ' · ' + g.dt : '') + '. ' : '') + 'Tồn kho sẽ được tính lại. Nhập lại mật khẩu để xác nhận.').then(function (pw) {
+    if (pw == null) return;
+    run('adminKhoDelete', pw, mp).then(function (k) { toast('Đã xoá ' + mp); loadAll(); }).catch(function (e) { alert(/mật khẩu/i.test(e.message) ? 'Sai mật khẩu – phiếu chưa bị xoá.' : e.message); });
+  });
+}
 function khoPartners(loai) { var seen = {}, out = []; KHO.slice().sort(function (a, b) { return b.ts - a.ts; }).forEach(function (k) { var d = String(k.dt || '').trim(); if (d && k.loai === loai && !seen[d.toLowerCase()]) { seen[d.toLowerCase()] = 1; out.push(d); } }); return out; }
 function lastPrice(s) { var best = null; KHO.forEach(function (k) { if (k.loai === 'Nhập' && k.s === s && k.g && (!best || k.ts > best.ts)) best = k; }); return best ? best.g : 0; }
 function openKho(loai) { KE = { loai: loai, doitac: khoPartners(loai)[0] || '', ghichu: '', items: [] }; renderKhoEd(); $('km').classList.add('on'); }
