@@ -164,6 +164,7 @@ header h1{white-space:nowrap}
       <button class="btn sec" onclick="printSel('giao')">In phiếu giao (đã chọn)</button>
       <button class="btn sec" onclick="printSel('ban')">In phiếu bán hàng (đã chọn)</button>
       <button class="btn sec" onclick="printSel('xuat')">In phiếu xuất kho (đã chọn)</button>
+      <button class="btn sec" style="color:#d93636;border-color:#f3b4b4" onclick="delSel()">Xoá đơn đã chọn</button>
       <span style="flex:1"></span>
       <button class="btn sec" onclick="loadAll()">Tải lại</button>
       <button class="btn sec" onclick="exportCsv()">Xuất CSV</button>
@@ -403,7 +404,8 @@ function renderEditor() {
       (d.ma && (d.tt === 'Mới' || d.tt === 'Đã xác nhận') ? '<button class="btn sec" onclick="quick(\'Đang giao\')">Giao hàng (xuất kho)</button>' : '') +
       (d.ma && d.tt === 'Đang giao' ? '<button class="btn ok" onclick="quick(\'Hoàn thành\')">Hoàn thành</button>' : '') +
       '<span class="sp"></span><button class="btn sec" onclick="printDocs(\'giao\',[ED])">In phiếu giao</button><button class="btn sec" onclick="printDocs(\'ban\',[ED])">In phiếu bán hàng</button><button class="btn sec" onclick="printDocs(\'xuat\',[ED])">In phiếu xuất kho</button>' +
-      (d.ma && d.tt !== 'Huỷ' ? '<button class="btn red" onclick="if(confirm(\'Huỷ đơn ' + esc(d.ma) + '?\'))quick(\'Huỷ\')">Huỷ đơn</button>' : '') + '</div>';
+      (d.ma && d.tt !== 'Huỷ' ? '<button class="btn red" onclick="if(confirm(\'Huỷ đơn ' + esc(d.ma) + '?\'))quick(\'Huỷ\')">Huỷ đơn</button>' : '') +
+      (d.ma ? '<button class="btn sec" style="color:#d93636;border-color:#f3b4b4" onclick="delOrders([ED.ma])">Xoá đơn</button>' : '') + '</div>';
   $('ombox').innerHTML = h; recalc();
 }
 function itemRows() {
@@ -540,6 +542,21 @@ function printDocs(kind, list) {
     '<script>document.fonts.ready.then(function(){setTimeout(function(){window.print()},300)})<\/script></body></html>';
   var w = window.open('', '_blank'); if (!w) return alert('Trình duyệt đang chặn cửa sổ in – hãy cho phép cửa sổ bật lên cho trang này.');
   w.document.open(); w.document.write(html); w.document.close();
+}
+function delSel() { var L = ORD.filter(function (o) { return SEL[o.ma]; }).map(function (o) { return o.ma; }); if (!L.length) return alert('Chưa chọn đơn nào – tick ô vuông đầu dòng đơn cần xoá.'); delOrders(L); }
+function delOrders(mas) {
+  var L = ORD.filter(function (o) { return mas.indexOf(o.ma) >= 0; }), inv = L.filter(function (o) { return o.hdtt === 'Đã phát hành'; });
+  var msg = (mas.length === 1 ? 'Đơn ' + mas[0] + (L[0] ? ' – ' + L[0].ten + (L[0].tong ? ' – ' + vnd0(L[0].tong) : '') : '') : mas.length + ' đơn: ' + mas.slice(0, 6).join(', ') + (mas.length > 6 ? '…' : '')) +
+    '. Đơn bị xoá sẽ mất khỏi danh sách, doanh số và tồn kho (bản sao được giữ trong sheet DonHang_DaXoa).' + (inv.length ? ' ' + inv.length + ' đơn đã phát hành hoá đơn điện tử sẽ KHÔNG bị xoá.' : '') + ' Nhập lại mật khẩu để xác nhận.';
+  askPass(mas.length === 1 ? 'Xoá đơn ' + mas[0] : 'Xoá ' + mas.length + ' đơn', msg).then(function (pw) {
+    if (pw == null) return;
+    run('adminDeleteOrders', pw, mas).then(function (r) {
+      r.del.forEach(function (m) { delete SEL[m]; });
+      closeM('om'); toast('Đã xoá ' + r.del.length + ' đơn');
+      if (r.skip.length) alert('Không xoá ' + r.skip.length + ' đơn đã phát hành hoá đơn: ' + r.skip.join(', ') + '. Hãy chuyển các đơn này sang "Huỷ" và xử lý hoá đơn trên MISA.');
+      loadAll();
+    }).catch(function (e) { alert(/mật khẩu/i.test(e.message) ? 'Sai mật khẩu – chưa xoá đơn nào.' : /Không hỗ trợ/.test(e.message) ? 'Cần cập nhật Code.gs mới (có chức năng xoá đơn) và triển khai lại Apps Script.' : e.message); });
+  });
 }
 function printSel(kind) { var L = ORD.filter(function (o) { return SEL[o.ma]; }).map(orderObj); printDocs(kind, L); }
 
