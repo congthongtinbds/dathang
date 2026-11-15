@@ -53,7 +53,11 @@ header a{color:#ffc23d;text-decoration:none;font-weight:600}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:999px;padding:11px 18px;font-size:15px;font-weight:600;color:var(--ink);font-family:inherit}
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-main{padding:10px 12px 110px;max-width:1100px;margin:0 auto}
+main{padding:10px 12px 110px;max-width:1100px;margin:0 auto;touch-action:pan-y}
+.grid.sl-l{animation:slL .22s ease-out}.grid.sl-r{animation:slR .22s ease-out}
+@keyframes slL{from{transform:translateX(40px);opacity:.3}to{transform:none;opacity:1}}@keyframes slR{from{transform:translateX(-40px);opacity:.3}to{transform:none;opacity:1}}
+.swt{position:fixed;left:50%;top:45%;transform:translate(-50%,-50%);background:rgba(31,42,74,.92);color:#fff;padding:10px 18px;border-radius:999px;font-weight:700;font-size:15px;z-index:40;pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+.swh{text-align:center;font-size:11.5px;color:var(--mut);margin:-2px 0 8px}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 @media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:960px){.grid{grid-template-columns:repeat(4,1fr)}}
@@ -181,7 +185,31 @@ google.script.run.withSuccessHandler(function (j) {
 }).withFailureHandler(function (e) { $('msg').textContent = 'Không tải được sản phẩm: ' + e.message; }).getProducts();
 
 $('chips').onclick = function (e) { var b = e.target.closest('.chip'); if (b) setCat(b.dataset.c); };
-function setCat(c) { cat = c; page = 1; [].forEach.call(document.querySelectorAll('.chip'), function (b) { b.classList.toggle('on', b.dataset.c === c); }); render(); }
+function setCat(c) { cat = c; page = 1; [].forEach.call(document.querySelectorAll('.chip'), function (b) { b.classList.toggle('on', b.dataset.c === c); if (b.dataset.c === c) b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); render(); }
+/* Vuốt trái / phải để chuyển nhóm hàng */
+(function () {
+  var x0, y0, t0, ok, hintShown = false;
+  var main = document.querySelector('main');
+  main.addEventListener('touchstart', function (e) {
+    ok = e.touches.length === 1 && !$('sh').classList.contains('on') && !$('zm').classList.contains('on') && !e.target.closest('input,textarea,.step,button');
+    if (!ok) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+  }, { passive: true });
+  main.addEventListener('touchend', function (e) {
+    if (!ok) return; ok = false;
+    var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Date.now() - t0 > 700 || Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    var chips = [].map.call(document.querySelectorAll('.chip'), function (b) { return b.dataset.c; });
+    if (chips.length < 2) return;
+    var i = chips.indexOf(cat), j = dx < 0 ? Math.min(chips.length - 1, i + 1) : Math.max(0, i - 1);
+    if (j === i) { swToast(dx < 0 ? 'Đã đến nhóm cuối' : 'Đang ở nhóm đầu'); return; }
+    setCat(chips[j]);
+    var g = $('grid'); g.classList.remove('sl-l', 'sl-r'); void g.offsetWidth; g.classList.add(dx < 0 ? 'sl-l' : 'sl-r');
+    var bar = document.querySelector('.bar'); if (bar && window.scrollY > bar.offsetTop) window.scrollTo({ top: bar.offsetTop, behavior: 'smooth' });
+    swToast((j + 1) + '/' + chips.length + ' · ' + (chips[j] || 'Tất cả'));
+  }, { passive: true });
+  var tt; function swToast(s) { var d = document.querySelector('.swt'); if (!d) { d = document.createElement('div'); d.className = 'swt'; document.body.appendChild(d); } d.textContent = s; d.style.display = 'block'; clearTimeout(tt); tt = setTimeout(function () { d.style.display = 'none'; }, 900); }
+  if ('ontouchstart' in window) { var h = document.createElement('div'); h.className = 'swh'; h.textContent = '← Vuốt sang trái / phải để chuyển nhóm hàng →'; main.insertBefore(h, main.firstChild); setTimeout(function () { h.remove(); }, 8000); }
+})();
 var tq; $('q').oninput = function () { clearTimeout(tq); tq = setTimeout(function () { page = 1; render(); }, 180); };
 $('more').onclick = function () { page++; render(true); };
 
