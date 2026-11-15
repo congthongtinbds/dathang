@@ -49,6 +49,11 @@ nav button.on{background:#fff;color:var(--ink)}
 .kpi b{display:block;font-size:20px}.kpi span{font-size:12px;color:var(--mut)}
 .od{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
 .od.new{border-left:4px solid var(--acc)}
+.od.huy{background:#fde8e8;border-color:#f3b4b4;border-left:6px solid #d93636}
+.od.huy .oh .a{color:#a61b1b;text-decoration:line-through}
+.od.huy .oh .b,.od.huy .oh .b b{color:#b55454!important}
+.od.huy .tag{background:#d93636;color:#fff}
+.od.done{background:#f1faf5}
 .oh{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 12px;cursor:pointer}
 .oh .a{font-weight:700}.oh .b{font-size:12.5px;color:var(--mut)}
 .tag{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:#eef1f6}
@@ -192,7 +197,7 @@ function renderOrders() {
   $('ol').innerHTML = L.length ? L.map(function (o) {
     var z = String(o.sdt).replace(/^\+?84/, '0');
     var adr = [o.dc, o.tinh].filter(Boolean).join(', ');
-    return '<div class="od' + (o.tt === 'Mới' ? ' new' : '') + (open[o.ma] ? ' open' : '') + '" data-ma="' + esc(o.ma) + '">' +
+    return '<div class="od' + (o.tt === 'Mới' ? ' new' : '') + (o.tt === 'Huỷ' ? ' huy' : '') + (o.tt === 'Hoàn thành' ? ' done' : '') + (open[o.ma] ? ' open' : '') + '" data-ma="' + esc(o.ma) + '">' +
       '<div class="oh" onclick="this.parentNode.classList.toggle(\'open\')"><div class="a">' + esc(o.ten) + (o.ch ? ' · ' + esc(o.ch) : '') + '</div>' +
       '<div><span class="tag t-' + esc(String(o.tt).split(' ')[0]) + '">' + esc(o.tt) + '</span></div>' +
       '<div class="b">' + esc(o.ma) + ' · ' + esc(o.tg) + ' · ' + esc(o.tinh || '') + '</div><div class="b" style="text-align:right"><b style="color:var(--ink)">' + esc(o.sl) + ' sp</b> / ' + esc(o.somau) + ' mẫu' + (o.tien ? '<br>' + vnd(o.tien) : '') + '</div></div>' +
