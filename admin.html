@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Quản lý đơn hàng</title>
+<link rel="icon" href="favicon.png">
+<script>
+/* Kết nối tới Apps Script. Nếu đổi link triển khai, chỉ cần sửa dòng API dưới đây. */
+var API = 'https://script.google.com/macros/s/AKfycbzxLqHinee9cIiPbzl8epqOC1-2I6gfghoustN5ni0ULjOSgeupjrxs07yHqGPhxArE/exec';
+window.google = { script: { get run() {
+  var ok = function () {}, no = function () {};
+  var p = new Proxy({}, { get: function (t, k) {
+    if (k === 'withSuccessHandler') return function (f) { ok = f; return p; };
+    if (k === 'withFailureHandler') return function (f) { no = f; return p; };
+    return function () {
+      var args = [].slice.call(arguments), tries = 0;
+      (function go() {
+        fetch(API, { method: 'POST', body: JSON.stringify({ fn: k, args: args }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
+          .then(function (r) { return r.json(); })
+          .then(function (j) { j.ok ? ok(j.data) : no(new Error(j.error)); })
+          .catch(function () { if (++tries < 2 && k !== 'placeOrder') setTimeout(go, 1200); else no(new Error('Lỗi kết nối mạng, vui lòng thử lại.')); });
+      })();
+    };
+  } });
+  return p;
+} } };
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--ink:#1f2a4a;--mut:#6b7590;--line:#e3e7ef;--bg:#f4f6fa;--acc:#ff6a4d;--ok:#1f9d6b}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Be Vietnam Pro",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14.5px}
+header{background:var(--ink);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{margin:0;font-size:16px;flex:1}
+nav{display:flex;gap:4px;overflow-x:auto}
+nav button{border:0;background:transparent;color:#c9d0e3;font:inherit;font-weight:600;padding:8px 12px;border-radius:8px;white-space:nowrap}
+nav button.on{background:#fff;color:var(--ink)}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 12px 60px}
+.tool{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.f{border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit;background:#fff}
+.btn{border:0;background:var(--ink);color:#fff;font:inherit;font-weight:600;border-radius:9px;padding:9px 14px;cursor:pointer}
+.btn.acc{background:var(--acc)}.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.kpi div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kpi b{display:block;font-size:20px}.kpi span{font-size:12px;color:var(--mut)}
+.od{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.od.new{border-left:4px solid var(--acc)}
+.oh{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 12px;cursor:pointer}
+.oh .a{font-weight:700}.oh .b{font-size:12.5px;color:var(--mut)}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:#eef1f6}
+.t-Mới{background:#ffe7e1;color:#c2401f}.t-Đã{background:#e6efff;color:#2556b8}.t-Đang{background:#fff4d6;color:#8a6100}.t-Hoàn{background:#dcf5ea;color:#13734d}.t-Huỷ{background:#eee;color:#888}
+.ob{display:none;border-top:1px solid var(--line);padding:10px 12px;font-size:13.5px;line-height:1.55}
+.od.open .ob{display:block}
+.ob pre{white-space:pre-wrap;font-family:inherit;background:var(--bg);border-radius:8px;padding:8px 10px;margin:6px 0}
+.ob a{color:#2556b8;font-weight:600;text-decoration:none;margin-right:12px}
+.ob .act{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{background:#eef1f6;font-size:12px;position:sticky;top:0}
+td img{width:40px;height:40px;object-fit:contain}
+td input.g{width:110px}
+tr.dirty{background:#fff8e6}
+.tbl{overflow:auto;max-height:70vh;border-radius:10px}
+.login{max-width:360px;margin:70px auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px}
+.login h2{margin:0 0 12px;font-size:18px}
+.err{color:#c0392b;font-size:13px;min-height:18px;margin-top:8px}
+.qrbig{display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+.qrbig .q{background:#fff;border-radius:10px;cursor:pointer}.qrbig .q img{width:260px;max-width:100%;display:block;border:1px solid var(--line);border-radius:10px}
+.qrbig code{word-break:break-all;font-size:12px;background:var(--bg);padding:4px 6px;border-radius:6px;display:block;margin:6px 0}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.qgrid img{width:100%;display:block;border:1px solid var(--line);border-radius:8px;cursor:pointer;break-inside:avoid}
+.qc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center;font-size:11.5px;break-inside:avoid}
+.qc .q{display:flex;justify-content:center;margin-bottom:4px}
+.qc b{display:block;font-size:13px}
+.hide{display:none!important}
+@media print{header,.tool,.noprint,.qrbig,#lg{display:none!important}body{background:#fff}.wrap{padding:0}.qgrid{grid-template-columns:repeat(3,1fr);gap:4mm}.qgrid img{border:1px dashed #999;border-radius:0}}
+</style>
+</head>
+<body>
+<div id="lg" class="login">
+  <h2>Đăng nhập quản lý</h2>
+  <input id="pw" class="f" type="password" placeholder="Mật khẩu" style="width:100%">
+  <button class="btn" style="width:100%;margin-top:10px" onclick="login()">Đăng nhập</button>
+  <div class="err" id="lerr"></div>
+</div>
+
+<div id="app" class="hide">
+<header><h1>Quản lý đơn hàng QR</h1>
+  <nav><button data-t="don" class="on">Đơn hàng</button><button data-t="sp">Sản phẩm</button><button data-t="qr">Mã QR</button><button data-t="tk">Thống kê</button></nav>
+</header>
+<div class="wrap">
+  <section id="t-don">
+    <div class="kpi" id="kpi"></div>
+    <div class="tool">
+      <select id="fs" class="f"><option value="">Tất cả trạng thái</option><option>Mới</option><option>Đã xác nhận</option><option>Đang giao</option><option>Hoàn thành</option><option>Huỷ</option></select>
+      <input id="fq" class="f" placeholder="Tìm mã đơn, tên, SĐT, địa chỉ, mã SP…" style="flex:1;min-width:180px">
+      <button class="btn sec" onclick="loadOrders()">Tải lại</button>
+      <button class="btn sec" onclick="exportCsv()">Xuất CSV</button>
+    </div>
+    <div id="ol"></div>
+  </section>
+
+  <section id="t-sp" class="hide">
+    <div class="tool">
+      <input id="pq" class="f" placeholder="Tìm sản phẩm…" style="flex:1;min-width:180px">
+      <select id="pc" class="f"><option value="">Tất cả nhóm</option></select>
+      <button class="btn acc" id="psave" onclick="saveProducts()" disabled>Lưu thay đổi</button>
+      <button class="btn sec" onclick="addProduct()">+ Thêm sản phẩm</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--mut);margin:-4px 0 10px">Giá để trống = hiện "liên hệ báo giá". Bỏ tick "Hiện" để ẩn mẫu hết hàng. Có thể sửa trực tiếp trên Google Sheet (sheet SanPham).</p>
+    <div class="tbl"><table><thead><tr><th>STT</th><th>Ảnh</th><th>Tên / mã</th><th>Nhóm</th><th>Giá đại lý</th><th>Hiện</th><th>QR</th></tr></thead><tbody id="pt"></tbody></table></div>
+  </section>
+
+  <section id="t-qr" class="hide">
+    <div class="qrbig">
+      <div class="q" id="qmain"></div>
+      <div style="flex:1;min-width:220px">
+        <b style="font-size:16px">QR chung – mở toàn bộ danh mục</b>
+        <code id="qurl"></code>
+        <div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn" onclick="dlQR('qmain','QR-dat-hang.png')">Tải ảnh QR</button>
+          <button class="btn sec" onclick="copyUrl()">Sao chép link</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--mut)">Ảnh QR đã kèm tiêu đề, tên shop, hướng dẫn 3 bước và hotline – in lên catalog, tờ rơi, quầy hàng hoặc gửi Zalo cho đại lý. Bấm vào ảnh để tải về.</p>
+      </div>
+    </div>
+    <div class="tool">
+      <select id="qk" class="f"><option value="nhom">QR theo nhóm hàng</option><option value="sp">QR từng sản phẩm</option></select>
+      <select id="qn" class="f"><option value="">Tất cả nhóm</option></select>
+      <button class="btn" onclick="buildGrid()">Tạo bảng QR</button>
+      <button class="btn sec" onclick="window.print()">In bảng QR</button>
+    </div>
+    <p class="noprint" style="font-size:12.5px;color:var(--mut);margin:-4px 0 8px">Bấm vào từng mã để tải riêng ảnh đó.</p><div class="qgrid" id="qg"></div>
+  </section>
+
+  <section id="t-tk" class="hide">
+    <div class="kpi" id="tkk"></div>
+    <h3 style="font-size:15px">Mẫu được đặt nhiều nhất</h3>
+    <div class="tbl"><table><thead><tr><th>STT</th><th>Mã SP</th><th>Tên</th><th>Tổng SL</th><th>Số đơn</th></tr></thead><tbody id="tkt"></tbody></table></div>
+  </section>
+</div>
+</div>
+
+<script>
+var BASE = location.href.split('?')[0].replace(/admin\.html$/, '');
+var SHOP = { TEN_SHOP: '', HOTLINE: '' }, PASS = '', ORD = [], SP = [], dirty = {}, timer;
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+var vnd = function (n) { n = Number(n) || 0; return n ? n.toLocaleString('vi-VN') + ' đ' : ''; };
+var nrm = function (s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd'); };
+function run(fn) { var a = [].slice.call(arguments, 1); return new Promise(function (ok, no) { google.script.run.withSuccessHandler(ok).withFailureHandler(no)[fn].apply(null, a); }); }
+
+try { PASS = sessionStorage.getItem('qr_admin') || ''; } catch (e) {}
+if (PASS) login(PASS);
+$('pw').onkeydown = function (e) { if (e.key === 'Enter') login(); };
+function login(p) {
+  p = p || $('pw').value; $('lerr').textContent = '';
+  run('adminLogin', p).then(function (r) {
+    PASS = p; try { sessionStorage.setItem('qr_admin', p); } catch (e) {}
+    if (r.url) BASE = r.url; if (r.shop) SHOP = r.shop;
+    $('lg').classList.add('hide'); $('app').classList.remove('hide');
+    loadOrders(); timer = setInterval(loadOrders, 60000);
+  }).catch(function (e) { $('lerr').textContent = e.message; try { sessionStorage.removeItem('qr_admin'); } catch (x) {} });
+}
+[].forEach.call(document.querySelectorAll('nav button'), function (b) {
+  b.onclick = function () {
+    [].forEach.call(document.querySelectorAll('nav button'), function (x) { x.classList.toggle('on', x === b); });
+    ['don', 'sp', 'qr', 'tk'].forEach(function (t) { $('t-' + t).classList.toggle('hide', t !== b.dataset.t); });
+    if (b.dataset.t === 'sp' && !SP.length) loadProducts();
+    if (b.dataset.t === 'qr') { mainQR(); if (!SP.length) loadProducts(); }
+    if (b.dataset.t === 'tk') loadStats();
+  };
+});
+
+/* ---- Đơn hàng ---- */
+function loadOrders() {
+  run('adminOrders', PASS, 500).then(function (r) { ORD = r; renderOrders(); }).catch(function (e) { $('ol').innerHTML = '<p class="err">' + esc(e.message) + '</p>'; });
+}
+$('fs').onchange = renderOrders; $('fq').oninput = renderOrders;
+function renderOrders() {
+  var s = $('fs').value, q = nrm($('fq').value.trim());
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var k = { moi: 0, hom: 0, slh: 0, all: ORD.length };
+  ORD.forEach(function (o) { if (o.tt === 'Mới') k.moi++; if (o.ts >= today.getTime()) { k.hom++; k.slh += Number(o.sl) || 0; } });
+  $('kpi').innerHTML = '<div><b style="color:var(--acc)">' + k.moi + '</b><span>Đơn mới chưa xử lý</span></div><div><b>' + k.hom + '</b><span>Đơn hôm nay</span></div><div><b>' + k.slh + '</b><span>Sản phẩm đặt hôm nay</span></div><div><b>' + k.all + '</b><span>Tổng đơn</span></div>';
+  document.title = (k.moi ? '(' + k.moi + ') ' : '') + 'Quản lý đơn hàng';
+  var L = ORD.filter(function (o) { return (!s || o.tt === s) && (!q || nrm([o.ma, o.ten, o.ch, o.sdt, o.dc, o.tinh, o.ct].join(' ')).indexOf(q) >= 0); });
+  var open = {}; [].forEach.call(document.querySelectorAll('.od.open'), function (e) { open[e.dataset.ma] = 1; });
+  $('ol').innerHTML = L.length ? L.map(function (o) {
+    var z = String(o.sdt).replace(/^\+?84/, '0');
+    var adr = [o.dc, o.tinh].filter(Boolean).join(', ');
+    return '<div class="od' + (o.tt === 'Mới' ? ' new' : '') + (open[o.ma] ? ' open' : '') + '" data-ma="' + esc(o.ma) + '">' +
+      '<div class="oh" onclick="this.parentNode.classList.toggle(\'open\')"><div class="a">' + esc(o.ten) + (o.ch ? ' · ' + esc(o.ch) : '') + '</div>' +
+      '<div><span class="tag t-' + esc(String(o.tt).split(' ')[0]) + '">' + esc(o.tt) + '</span></div>' +
+      '<div class="b">' + esc(o.ma) + ' · ' + esc(o.tg) + ' · ' + esc(o.tinh || '') + '</div><div class="b" style="text-align:right"><b style="color:var(--ink)">' + esc(o.sl) + ' sp</b> / ' + esc(o.somau) + ' mẫu' + (o.tien ? '<br>' + vnd(o.tien) : '') + '</div></div>' +
+      '<div class="ob"><div><b>SĐT:</b> ' + esc(o.sdt) + ' &nbsp; <a href="tel:' + esc(o.sdt) + '">Gọi</a><a href="https://zalo.me/' + esc(z) + '">Zalo</a></div>' +
+      '<div><b>Địa chỉ:</b> ' + esc(adr) + ' &nbsp; <a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(adr) + '">Bản đồ</a></div>' +
+      (o.gc ? '<div><b>Ghi chú của đại lý:</b> ' + esc(o.gc) + '</div>' : '') +
+      '<div><b>Nguồn:</b> ' + esc(o.nguon || '') + '</div><pre>' + esc(o.ct) + '</pre>' +
+      '<div class="act"><select class="f" id="st_' + o.row + '">' + ['Mới', 'Đã xác nhận', 'Đang giao', 'Hoàn thành', 'Huỷ'].map(function (t) { return '<option' + (t === o.tt ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>' +
+      '<input class="f" id="nb_' + o.row + '" placeholder="Ghi chú nội bộ (chỉ mình thấy)" value="' + esc(o.noibo) + '" style="flex:1;min-width:160px">' +
+      '<button class="btn" onclick="setSt(' + o.row + ',\'' + esc(o.ma) + '\')">Lưu</button>' +
+      '<button class="btn sec" onclick="copyOrder(\'' + esc(o.ma) + '\')">Sao chép đơn</button></div></div></div>';
+  }).join('') : '<p style="color:var(--mut)">Chưa có đơn hàng.</p>';
+}
+function setSt(row, ma) {
+  run('adminSetStatus', PASS, row, ma, $('st_' + row).value, $('nb_' + row).value).then(loadOrders).catch(function (e) { alert(e.message); });
+}
+function copyOrder(ma) {
+  var o = ORD.filter(function (x) { return x.ma === ma; })[0]; if (!o) return;
+  var t = 'Đơn ' + o.ma + ' (' + o.tg + ')\n' + o.ten + (o.ch ? ' – ' + o.ch : '') + '\nSĐT: ' + o.sdt + '\nĐịa chỉ: ' + [o.dc, o.tinh].filter(Boolean).join(', ') + (o.gc ? '\nGhi chú: ' + o.gc : '') + '\n\n' + o.ct + '\n\nTổng: ' + o.sl + ' sp' + (o.tien ? ' – ' + vnd(o.tien) : '');
+  navigator.clipboard.writeText(t).then(function () { alert('Đã sao chép đơn ' + ma); });
+}
+function exportCsv() {
+  var H = ['Mã đơn', 'Thời gian', 'Tên', 'Cửa hàng', 'SĐT', 'Tỉnh', 'Địa chỉ', 'Ghi chú', 'Số mẫu', 'Tổng SL', 'Tổng tiền', 'Trạng thái', 'Chi tiết'];
+  var rows = ORD.map(function (o) { return [o.ma, o.tg, o.ten, o.ch, o.sdt, o.tinh, o.dc, o.gc, o.somau, o.sl, o.tien, o.tt, o.ct]; });
+  var csv = '﻿' + [H].concat(rows).map(function (r) { return r.map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'don-hang.csv'; a.click();
+}
+
+/* ---- Sản phẩm ---- */
+function loadProducts() {
+  $('pt').innerHTML = '<tr><td colspan="7">Đang tải…</td></tr>';
+  return run('adminProducts', PASS).then(function (j) {
+    SP = JSON.parse(j); dirty = {}; $('psave').disabled = true;
+    var cats = []; SP.forEach(function (p) { if (p.nhom && cats.indexOf(p.nhom) < 0) cats.push(p.nhom); });
+    var opt = '<option value="">Tất cả nhóm</option>' + cats.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+    $('pc').innerHTML = opt; $('qn').innerHTML = opt;
+    renderProducts(); if (!$('t-qr').classList.contains('hide')) mainQR();
+  }).catch(function (e) { $('pt').innerHTML = '<tr><td colspan="7" class="err">' + esc(e.message) + '</td></tr>'; });
+}
+$('pq').oninput = renderProducts; $('pc').onchange = renderProducts;
+function renderProducts() {
+  var q = nrm($('pq').value), c = $('pc').value;
+  $('pt').innerHTML = SP.filter(function (p) { return (!c || p.nhom === c) && (!q || nrm(p.stt + ' ' + p.ma + ' ' + p.ten + ' ' + p.mv).indexOf(q) >= 0); }).map(function (p) {
+    var d = dirty[p.row] || {};
+    return '<tr data-row="' + p.row + '" class="' + (dirty[p.row] ? 'dirty' : '') + '"><td><b>' + esc(p.stt) + '</b></td><td>' + (p.anh ? '<img loading="lazy" src="' + esc(p.anh) + '">' : '') + '</td>' +
+      '<td>' + esc(p.ten) + '<br><span style="color:var(--mut);font-size:12px">' + esc(p.ma) + (p.mv ? ' · ' + esc(p.mv) : '') + '</span></td><td style="font-size:12px">' + esc(p.nhom) + '</td>' +
+      '<td><input class="f g" inputmode="numeric" data-k="gia" value="' + esc('gia' in d ? d.gia : (p.gia || '')) + '" placeholder="Liên hệ"></td>' +
+      '<td><input type="checkbox" data-k="hien"' + (('hien' in d ? d.hien : p.hien) ? ' checked' : '') + '></td>' +
+      '<td><button class="btn sec" style="padding:5px 9px" onclick="oneQR(\'' + esc(p.stt) + '\')">QR</button></td></tr>';
+  }).join('');
+}
+$('pt').addEventListener('change', function (e) {
+  var tr = e.target.closest('tr'); if (!tr || !e.target.dataset.k) return;
+  var row = Number(tr.dataset.row), p = SP.filter(function (x) { return x.row === row; })[0];
+  dirty[row] = dirty[row] || { row: row, stt: p.stt };
+  dirty[row][e.target.dataset.k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value.replace(/[^\d]/g, '');
+  tr.classList.add('dirty'); $('psave').disabled = false; $('psave').textContent = 'Lưu thay đổi (' + Object.keys(dirty).length + ')';
+});
+function saveProducts() {
+  var ch = Object.keys(dirty).map(function (k) { return dirty[k]; }); if (!ch.length) return;
+  $('psave').disabled = true; $('psave').textContent = 'Đang lưu…';
+  run('adminSaveProducts', PASS, ch).then(function () { $('psave').textContent = 'Lưu thay đổi'; loadProducts(); }).catch(function (e) { alert(e.message); $('psave').disabled = false; });
+}
+function addProduct() {
+  var stt = prompt('STT / mã nội bộ của sản phẩm mới (không trùng):'); if (!stt) return;
+  if (SP.some(function (p) { return p.stt === stt.trim(); })) return alert('STT đã tồn tại.');
+  var ten = prompt('Tên sản phẩm:'); if (!ten) return;
+  var ma = prompt('Mã sản phẩm (có thể bỏ trống):') || '';
+  var nhom = prompt('Nhóm hàng (gõ đúng tên nhóm có sẵn hoặc nhóm mới):', $('pc').value || '') || '';
+  var gia = prompt('Giá đại lý (bỏ trống = liên hệ):') || '';
+  var anh = prompt('Link ảnh (có thể bỏ trống, thêm sau trên Sheet):') || '';
+  run('adminSaveProducts', PASS, [{ row: 0, stt: stt.trim(), ten: ten, ma: ma, nhom: nhom, gia: gia, hien: true, anh: anh }]).then(loadProducts).catch(function (e) { alert(e.message); });
+}
+
+/* ---- QR ---- */
+function qrCanvas(text, size) {
+  var d = document.createElement('div');
+  new QRCode(d, { text: text, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
+  return d.querySelector('canvas');
+}
+function wrap(ctx, text, maxW, maxLines) {
+  var words = String(text || '').split(/\s+/), lines = [], cur = '';
+  words.forEach(function (w) { var t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; });
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) { lines = lines.slice(0, maxLines); var l = lines[maxLines - 1]; while (ctx.measureText(l + '…').width > maxW && l.length) l = l.slice(0, -1); lines[maxLines - 1] = l + '…'; }
+  return lines;
+}
+/* Thẻ QR có chữ: o = {url, badge, title, sub, kind:'main'|'nhom'|'sp'} */
+function qrCard(o) {
+  var W = 600, F = '"Be Vietnam Pro", Arial, sans-serif', pad = 36;
+  var c = document.createElement('canvas'), x = c.getContext('2d');
+  x.font = '700 30px ' + F; var tl = wrap(x, o.title, W - 2 * pad, 2);
+  x.font = '500 21px ' + F; var sl = o.sub ? wrap(x, o.sub, W - 2 * pad, 2) : [];
+  var steps = o.kind === 'sp'
+    ? ['Mở Camera hoặc Zalo, quét mã', 'Nhập số lượng, có thể chọn thêm mẫu', 'Bấm Đặt hàng – nhập tên, SĐT, địa chỉ']
+    : ['Mở Camera hoặc Zalo, quét mã', 'Chọn mẫu và số lượng', 'Bấm Đặt hàng – nhập tên, SĐT, địa chỉ'];
+  var head = 92, q = 380;
+  var H = head + 26 + (o.badge ? 40 : 0) + tl.length * 38 + sl.length * 28 + 18 + q + 22 + steps.length * 34 + 20 + 64;
+  c.width = W; c.height = H;
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#1f2a4a'; x.fillRect(0, 0, W, head);
+  x.fillStyle = '#ffc23d'; x.font = '800 34px ' + F; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(o.kind === 'sp' ? 'QUÉT ĐỂ ĐẶT MẪU NÀY' : 'QUÉT MÃ ĐỂ ĐẶT HÀNG', W / 2, 38);
+  x.fillStyle = '#c9d0e3'; x.font = '500 19px ' + F; x.fillText(SHOP.TEN_SHOP || '', W / 2, 72);
+  var y = head + 26; x.textBaseline = 'top';
+  if (o.badge) {
+    x.font = '700 22px ' + F; var bw = x.measureText(o.badge).width + 28;
+    x.fillStyle = '#ff6a4d'; roundRect(x, (W - bw) / 2, y - 6, bw, 34, 8); x.fill();
+    x.fillStyle = '#fff'; x.fillText(o.badge, W / 2, y); y += 40;
+  }
+  x.fillStyle = '#1f2a4a'; x.font = '700 30px ' + F; tl.forEach(function (l) { x.fillText(l, W / 2, y); y += 38; });
+  x.fillStyle = '#6b7590'; x.font = '500 21px ' + F; sl.forEach(function (l) { x.fillText(l, W / 2, y); y += 28; });
+  y += 18;
+  x.drawImage(qrCanvas(o.url, q), (W - q) / 2, y); y += q + 22;
+  x.textAlign = 'left'; x.font = '500 21px ' + F;
+  steps.forEach(function (t, i) {
+    x.fillStyle = '#1f2a4a'; x.beginPath(); x.arc(pad + 14, y + 13, 14, 0, 7); x.fill();
+    x.fillStyle = '#fff'; x.font = '700 17px ' + F; x.textAlign = 'center'; x.fillText(String(i + 1), pad + 14, y + 3);
+    x.textAlign = 'left'; x.fillStyle = '#1f2a4a'; x.font = '500 21px ' + F; x.fillText(t, pad + 40, y); y += 34;
+  });
+  y += 20; x.fillStyle = '#f4f6fa'; x.fillRect(0, y, W, 64);
+  x.fillStyle = '#1f2a4a'; x.textAlign = 'center'; x.font = '700 22px ' + F;
+  x.fillText('Hỗ trợ đặt hàng: ' + fmtPhone(SHOP.HOTLINE) + ' (Zalo)', W / 2, y + 20);
+  return trimCanvas(c, y + 64);
+}
+function roundRect(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
+function trimCanvas(c, h) { var d = document.createElement('canvas'); d.width = c.width; d.height = h; d.getContext('2d').drawImage(c, 0, 0); return d; }
+function fmtPhone(p) { p = String(p || ''); return p.length === 10 ? p.slice(0, 4) + '.' + p.slice(4, 7) + '.' + p.slice(7) : p; }
+function cardImg(o, name) {
+  var im = new Image(); im.src = qrCard(o).toDataURL('image/png'); im.title = 'Bấm để tải ' + name; im.alt = o.title;
+  im.onclick = function () { var a = document.createElement('a'); a.href = im.src; a.download = name; a.click(); };
+  return im;
+}
+var fontsOk = (document.fonts && document.fonts.load) ? Promise.all([document.fonts.load('800 34px "Be Vietnam Pro"'), document.fonts.load('500 21px "Be Vietnam Pro"'), document.fonts.load('700 30px "Be Vietnam Pro"')]).catch(function () {}) : Promise.resolve();
+function mainQR() {
+  $('qurl').textContent = BASE;
+  fontsOk.then(function () {
+    var n = SP.filter(function (p) { return p.hien; }).length;
+    $('qmain').innerHTML = ''; $('qmain').appendChild(cardImg({ url: BASE, kind: 'main', title: 'Catalog đồ chơi & mô hình', sub: (n ? n + ' mẫu · ' : '') + 'Đặt sỉ, lẻ cho đại lý ngay trên điện thoại' }, 'QR-dat-hang.png'));
+  });
+}
+function copyUrl() { navigator.clipboard.writeText(BASE).then(function () { alert('Đã sao chép link đặt hàng'); }); }
+function dlQR() { var im = $('qmain').querySelector('img'); if (im) im.click(); }
+function buildGrid() {
+  var kind = $('qk').value, n = $('qn').value, items = [];
+  if (kind === 'nhom') {
+    var cats = []; SP.forEach(function (p) { if (p.hien && p.nhom && cats.indexOf(p.nhom) < 0 && (!n || p.nhom === n)) cats.push(p.nhom); });
+    items = cats.map(function (c) { return { o: { url: BASE + '?nhom=' + encodeURIComponent(c), kind: 'nhom', badge: 'NHÓM HÀNG', title: c, sub: SP.filter(function (p) { return p.nhom === c && p.hien; }).length + ' mẫu – quét để xem và đặt' }, f: 'QR-nhom-' + c + '.png' }; });
+  } else {
+    items = SP.filter(function (p) { return p.hien && (!n || p.nhom === n); }).map(function (p) {
+      return { o: { url: BASE + '?sp=' + encodeURIComponent(p.stt), kind: 'sp', badge: 'STT ' + p.stt, title: p.ten, sub: [p.ma, p.gia ? Number(p.gia).toLocaleString('vi-VN') + ' đ' : ''].filter(Boolean).join(' · ') }, f: 'QR-' + p.stt + '.png' };
+    });
+  }
+  if (items.length > 400) items = items.slice(0, 400);
+  $('qg').innerHTML = '<p style="color:var(--mut)">Đang tạo ' + items.length + ' mã…</p>';
+  fontsOk.then(function () {
+    $('qg').innerHTML = ''; var i = 0;
+    (function step() { var end = Math.min(items.length, i + 20); for (; i < end; i++) $('qg').appendChild(cardImg(items[i].o, items[i].f)); if (i < items.length) setTimeout(step, 0); })();
+  });
+}
+function oneQR(stt) {
+  document.querySelector('nav button[data-t="qr"]').click();
+  var p = SP.filter(function (x) { return x.stt === stt; })[0]; if (!p) return;
+  fontsOk.then(function () {
+    $('qg').innerHTML = '';
+    $('qg').appendChild(cardImg({ url: BASE + '?sp=' + encodeURIComponent(stt), kind: 'sp', badge: 'STT ' + stt, title: p.ten, sub: [p.ma, p.gia ? Number(p.gia).toLocaleString('vi-VN') + ' đ' : ''].filter(Boolean).join(' · ') }, 'QR-' + stt + '.png'));
+    $('qg').scrollIntoView({ block: 'start' });
+  });
+}
+
+/* ---- Thống kê ---- */
+function loadStats() {
+  var k = { sl: 0, tien: 0, dl: {}, done: 0 };
+  ORD.forEach(function (o) { if (o.tt === 'Huỷ') return; k.sl += Number(o.sl) || 0; k.tien += Number(o.tien) || 0; k.dl[o.sdt] = 1; if (o.tt === 'Hoàn thành') k.done++; });
+  $('tkk').innerHTML = '<div><b>' + Object.keys(k.dl).length + '</b><span>Đại lý đã đặt</span></div><div><b>' + k.sl + '</b><span>Tổng SL (trừ huỷ)</span></div><div><b>' + (vnd(k.tien) || '–') + '</b><span>Tổng tiền tạm tính</span></div><div><b>' + k.done + '</b><span>Đơn hoàn thành</span></div>';
+  $('tkt').innerHTML = '<tr><td colspan="5">Đang tải…</td></tr>';
+  run('adminStats', PASS).then(function (r) {
+    $('tkt').innerHTML = r.top.length ? r.top.map(function (x) { return '<tr><td>' + esc(x.stt) + '</td><td>' + esc(x.ma) + '</td><td>' + esc(x.ten) + '</td><td><b>' + x.sl + '</b></td><td>' + x.don + '</td></tr>'; }).join('') : '<tr><td colspan="5">Chưa có dữ liệu.</td></tr>';
+  });
+}
+</script>
+</body>
+</html>
