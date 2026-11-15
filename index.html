@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Đặt hàng đồ chơi & mô hình</title>
+<meta name="theme-color" content="#1f2a4a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Đặt hàng">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+html,body{margin:0;height:100%;background:#1f2a4a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+iframe{position:fixed;inset:0;width:100%;height:100%;border:0;padding-top:env(safe-area-inset-top);box-sizing:border-box;background:#f4f6fa}
+#ld{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#c9d0e3;gap:14px;font-size:14px}
+#ld img{width:84px;height:84px;border-radius:20px}
+#ib{position:fixed;right:12px;bottom:84px;z-index:9;display:none;border:0;background:#ffc23d;color:#1f2a4a;font:700 14px system-ui,sans-serif;border-radius:999px;padding:11px 16px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+#gd{position:fixed;inset:0;z-index:10;background:rgba(10,14,25,.6);display:none;align-items:flex-end;justify-content:center}
+#gd.on{display:flex}
+#gd .p{background:#fff;color:#1f2a4a;width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));font-size:14px;line-height:1.55}
+#gd h3{margin:0 0 6px;display:flex;align-items:center;gap:10px}#gd h3 img{width:40px;height:40px;border-radius:10px}
+#gd ol{padding-left:20px;margin:6px 0}#gd button{border:0;background:#1f2a4a;color:#fff;font:600 14px system-ui;border-radius:10px;padding:11px;width:100%;margin-top:10px}
+#gd .n{color:#6b7590;font-size:12.5px}
+</style>
+</head>
+<body>
+<div id="ld"><img src="icon-192.png" alt=""><div>Đang mở trang đặt hàng…</div></div>
+<iframe id="app" title="Đặt hàng" allow="clipboard-write"></iframe>
+<button id="ib">Cài app</button>
+<div id="gd"><div class="p" id="gp"></div></div>
+<script>
+/* ====== CHỈ CẦN SỬA DÒNG NÀY: dán link ứng dụng web Apps Script (…/exec) ====== */
+var APP_URL = 'https://script.google.com/macros/s/AKfycbzxLqHinee9cIiPbzl8epqOC1-2I6gfghoustN5ni0ULjOSgeupjrxs07yHqGPhxArE/exec';
+/* ============================================================================ */
+(function () {
+  var q = location.search.replace(/^\?/, '').split('&').filter(function (x) { return x && x.indexOf('src=') !== 0; });
+  q.push('app=1');
+  var f = document.getElementById('app');
+  f.onload = function () { document.getElementById('ld').style.display = 'none'; };
+  f.src = APP_URL + (APP_URL.indexOf('?') < 0 ? '?' : '&') + q.join('&');
+
+  var standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  if (standalone) return;
+
+  var ib = document.getElementById('ib'), gd = document.getElementById('gd'), gp = document.getElementById('gp'), deferred = null;
+  var ua = navigator.userAgent, ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var inApp = /Zalo|FBAN|FBAV|Instagram|Line\//i.test(ua);
+  try { if (localStorage.getItem('ib_hide') === '1') return; } catch (e) {}
+  ib.style.display = 'block';
+  addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; });
+  addEventListener('appinstalled', function () { ib.style.display = 'none'; });
+
+  function guide(html) { gp.innerHTML = '<h3><img src="icon-192.png" alt="">Cài app đặt hàng</h3>' + html + '<button id="gx">Đã hiểu</button>'; gd.classList.add('on'); document.getElementById('gx').onclick = function () { gd.classList.remove('on'); }; }
+  gd.onclick = function (e) { if (e.target === gd) gd.classList.remove('on'); };
+  ib.onclick = function () {
+    if (deferred) { deferred.prompt(); deferred.userChoice.then(function (r) { if (r.outcome === 'accepted') ib.style.display = 'none'; deferred = null; }); return; }
+    if (inApp) return guide('<p>Bạn đang mở trong Zalo/Facebook nên chưa cài được.</p><ol><li>Bấm <b>⋯</b> (góc trên bên phải)</li><li>Chọn <b>Mở bằng trình duyệt</b> (' + (ios ? 'Safari' : 'Chrome') + ')</li><li>Bấm lại nút <b>Cài app</b></li></ol>');
+    if (ios) return guide('<ol><li>Bấm nút <b>Chia sẻ</b> (ô vuông có mũi tên lên) ở thanh dưới của Safari</li><li>Kéo xuống, chọn <b>Thêm vào MH chính</b></li><li>Bấm <b>Thêm</b> – biểu tượng app hiện trên màn hình chính</li></ol><p class="n">Lần sau chạm biểu tượng là vào đặt hàng, không cần quét QR.</p>');
+    guide('<ol><li>Bấm <b>⋮</b> ở góc phải trên của Chrome</li><li>Chọn <b>Cài đặt ứng dụng</b> hoặc <b>Thêm vào màn hình chính</b></li><li>Bấm <b>Cài đặt</b></li></ol><p class="n">Lần sau chạm biểu tượng là vào đặt hàng, không cần quét QR.</p>');
+  };
+})();
+</script>
+</body>
+</html>
