@@ -66,6 +66,9 @@ main{padding:10px 12px 110px;max-width:1100px;margin:0 auto;touch-action:pan-y}
 .ph{aspect-ratio:1/1;background:#fff;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:1px solid var(--line);cursor:zoom-in}
 .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .ph .no{position:absolute;top:6px;left:6px;background:var(--ink);color:#fff;font-size:11px;padding:2px 7px;border-radius:6px;font-weight:600}
+.rmc{position:absolute;top:5px;right:5px;width:30px;height:30px;border-radius:50%;border:0;background:#d93636;color:#fff;font-size:20px;line-height:1;font-weight:700;display:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:2}
+.card.in .rmc{display:flex}.card.in{border-color:var(--acc)}
+.rm{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid #f3b4b4;background:#fff;color:#d93636;font-size:20px;line-height:1;font-weight:700}
 .ph .na{color:var(--mut);font-size:12px}
 .mt{padding:8px 9px 9px;display:flex;flex-direction:column;gap:3px;flex:1}
 .mt h3{margin:0;font-size:13.5px;line-height:1.3;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
@@ -219,8 +222,8 @@ function list() {
 }
 function card(p) {
   var q = cart[p.s] || 0;
-  return '<div class="card' + (p.s === SP0 ? ' hl' : '') + '" data-s="' + esc(p.s) + '">' +
-    '<div class="ph" data-z="' + esc(p.s) + '">' + (p.a ? '<img loading="lazy" src="' + esc(p.a) + '" alt="">' : '<span class="na">Ảnh đang cập nhật</span>') + '<span class="no">' + esc(p.s) + '</span></div>' +
+  return '<div class="card' + (p.s === SP0 ? ' hl' : '') + (q ? ' in' : '') + '" data-s="' + esc(p.s) + '">' +
+    '<div class="ph" data-z="' + esc(p.s) + '">' + (p.a ? '<img loading="lazy" src="' + esc(p.a) + '" alt="">' : '<span class="na">Ảnh đang cập nhật</span>') + '<span class="no">' + esc(p.s) + '</span><button class="rmc" data-rm="' + esc(p.s) + '" title="Bỏ khỏi giỏ hàng" aria-label="Bỏ khỏi giỏ hàng">×</button></div>' +
     '<div class="mt"><h3 data-z="' + esc(p.s) + '">' + esc(p.t) + '</h3><div class="c">' + esc(p.m) + '</div>' + (p.x ? '<button class="vt" data-z="' + esc(p.s) + '">Xem kích thước, thông số ›</button>' : '') +
     (p.g ? '<div class="g">' + vnd(p.g) + ' / ' + esc(p.d) + '</div>' : '<div class="g lh">Giá: liên hệ báo giá</div>') +
     '<div class="step"><button data-d="-1">−</button><input inputmode="numeric" value="' + (q || '') + '" placeholder="0" class="' + (q ? 'has' : '') + '"><button class="p" data-d="1">+</button></div></div></div>';
@@ -237,9 +240,12 @@ function setQ(s, q) {
   if (q) cart[s] = q; else delete cart[s];
   LS.set('qr_cart', cart);
   [].forEach.call(document.querySelectorAll('[data-s="' + CSS.escape(s) + '"] .step input'), function (i) { i.value = q || ''; i.classList.toggle('has', !!q); });
+  [].forEach.call(document.querySelectorAll('.card[data-s="' + CSS.escape(s) + '"]'), function (c) { c.classList.toggle('in', !!q); });
   upd();
 }
 document.addEventListener('click', function (e) {
+  var rm = e.target.closest('[data-rm]');
+  if (rm) { e.stopPropagation(); setQ(rm.dataset.rm, 0); if (rm.closest('.li')) { if (!sums().n) closeSheet(); else openSheet(cartHtml()); } return; }
   var b = e.target.closest('.step button'); if (b) { var s = b.closest('[data-s]').dataset.s; setQ(s, (cart[s] || 0) + Number(b.dataset.d)); return; }
   var z = e.target.closest('[data-z]'); if (z) { showDetail(z.dataset.z); return; }
   var hz = e.target.closest('.dt .hero img'); if (hz) { $('zi').src = hz.src.replace('sz=w600', 'sz=w1200'); $('zt').textContent = ''; $('zm').classList.add('on'); }
@@ -295,7 +301,7 @@ function cartHtml() {
   return '<h2>Giỏ hàng <button class="x" onclick="closeSheet()">×</button></h2>' +
     keys.map(function (s) { var p = byS[s]; return '<div class="li" data-s="' + esc(s) + '">' + (p.a ? '<img src="' + esc(p.a) + '">' : '') +
       '<div class="t"><b>' + esc(p.s + ' · ' + p.t) + '</b><span>' + esc(p.m) + (p.g ? ' · ' + vnd(p.g * cart[s]) : '') + '</span></div>' +
-      '<div class="step"><button data-d="-1">−</button><input inputmode="numeric" value="' + cart[s] + '" class="has"><button class="p" data-d="1">+</button></div></div>'; }).join('') +
+      '<div class="step"><button data-d="-1">−</button><input inputmode="numeric" value="' + cart[s] + '" class="has"><button class="p" data-d="1">+</button></div><button class="rm" data-rm="' + esc(s) + '" title="Xoá khỏi giỏ" aria-label="Xoá khỏi giỏ">×</button></div>'; }).join('') +
     '<div class="tot"><span>' + x.n + ' mẫu · ' + x.sl + ' sản phẩm</span><span>' + (x.t ? vnd(x.t) : '') + '</span></div>' +
     (x.miss ? '<div class="note">' + x.miss + ' mẫu chưa có giá – bên bán sẽ báo giá khi xác nhận đơn.</div>' : '') +
     '<div style="display:flex;gap:10px;margin-top:12px"><button class="btn sec" style="flex:1" onclick="closeSheet()">Chọn thêm</button><button class="btn" style="flex:1" onclick="formHtml()">Đặt hàng</button></div>';
