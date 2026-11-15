@@ -60,7 +60,7 @@ main{padding:10px 12px 110px;max-width:1100px;margin:0 auto}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .card.hl{outline:3px solid var(--acc)}
 .ph{aspect-ratio:1/1;background:#fff;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:1px solid var(--line);cursor:zoom-in}
-.ph img{max-width:100%;max-height:100%;object-fit:contain}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .ph .no{position:absolute;top:6px;left:6px;background:var(--ink);color:#fff;font-size:11px;padding:2px 7px;border-radius:6px;font-weight:600}
 .ph .na{color:var(--mut);font-size:12px}
 .mt{padding:8px 9px 9px;display:flex;flex-direction:column;gap:3px;flex:1}
@@ -171,6 +171,8 @@ google.script.run.withSuccessHandler(function (j) {
   $('chips').innerHTML = '<button class="chip on" data-c="">Tất cả (' + P.length + ')</button>' + cats.map(function (c) {
     return '<button class="chip" data-c="' + esc(c) + '">' + esc(c) + '</button>'; }).join('');
   if (NHOM0 && cats.indexOf(NHOM0) >= 0) setCat(NHOM0);
+  else if (SP0 && byS[SP0] && byS[SP0].n) setCat(byS[SP0].n);
+  if (SP0 && byS[SP0]) { var ix = list().indexOf(byS[SP0]); if (ix >= 0) page = Math.floor(ix / PER) + 1; }
   render(); upd();
   if (SP0 && byS[SP0]) setTimeout(function () { var el = document.querySelector('.card[data-s="' + CSS.escape(SP0) + '"]'); if (el) el.scrollIntoView({ block: 'center' }); }, 100);
 }).withFailureHandler(function (e) { $('msg').textContent = 'Không tải được sản phẩm: ' + e.message; }).getProducts();
