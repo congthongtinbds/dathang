@@ -575,11 +575,14 @@ function renderKho() {
 function khoGroup(mp) { var it = KHO.filter(function (k) { return k.mp === mp; }); if (!it.length) return null; return { mp: mp, tg: it[0].tg, loai: it[0].loai, dt: it[0].dt, gc: it[0].gc, items: it.map(function (k) { return { s: k.s, t: k.t, m: k.m, q: k.q, g: k.g }; }) }; }
 function printKho(mp) { var g = khoGroup(mp); if (g) printDocs('kho', [g]); }
 function delKho(mp) { if (!confirm('Xoá phiếu ' + mp + '? Tồn kho sẽ được tính lại.')) return; run('adminKhoDelete', PASS, mp).then(function () { toast('Đã xoá ' + mp); loadAll(); }).catch(function (e) { alert(e.message); }); }
-function openKho(loai) { KE = { loai: loai, doitac: '', ghichu: '', items: [] }; renderKhoEd(); $('km').classList.add('on'); }
+function khoPartners(loai) { var seen = {}, out = []; KHO.slice().sort(function (a, b) { return b.ts - a.ts; }).forEach(function (k) { var d = String(k.dt || '').trim(); if (d && k.loai === loai && !seen[d.toLowerCase()]) { seen[d.toLowerCase()] = 1; out.push(d); } }); return out; }
+function lastPrice(s) { var best = null; KHO.forEach(function (k) { if (k.loai === 'Nhập' && k.s === s && k.g && (!best || k.ts > best.ts)) best = k; }); return best ? best.g : 0; }
+function openKho(loai) { KE = { loai: loai, doitac: khoPartners(loai)[0] || '', ghichu: '', items: [] }; renderKhoEd(); $('km').classList.add('on'); }
 function renderKhoEd() {
   var dc = KE.loai === 'Điều chỉnh', M = stockMap();
   $('kmbox').innerHTML = '<button class="x" onclick="closeM(\'km\')">×</button><h2>' + (KE.loai === 'Nhập' ? 'Phiếu nhập kho' : KE.loai === 'Xuất' ? 'Phiếu xuất kho khác (hàng mẫu, hỏng, tặng…)' : 'Kiểm kê / điều chỉnh tồn kho') + '</h2>' +
-    '<div class="g2"><div><label>' + (KE.loai === 'Nhập' ? 'Nhà cung cấp' : 'Đối tác / người nhận') + '</label><input class="f" value="' + esc(KE.doitac) + '" oninput="KE.doitac=this.value"' + (KE.loai === 'Nhập' ? ' placeholder="VD: Tùng Phát"' : '') + '></div>' +
+    '<datalist id="ncdl">' + khoPartners(KE.loai).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>' +
+    '<div class="g2"><div><label>' + (KE.loai === 'Nhập' ? 'Nhà cung cấp' : 'Đối tác / người nhận') + (khoPartners(KE.loai).length ? ' <span style="font-weight:400">(bấm vào ô để chọn từ danh sách đã nhập)</span>' : '') + '</label><input class="f" list="ncdl" autocomplete="off" value="' + esc(KE.doitac) + '" onfocus="if(this.value)this.select()" oninput="KE.doitac=this.value"' + (KE.loai === 'Nhập' ? ' placeholder="VD: Tùng Phát"' : '') + '></div>' +
     '<div style="grid-column:span 2"><label>Ghi chú</label><input class="f" value="' + esc(KE.ghichu) + '" oninput="KE.ghichu=this.value"></div></div>' +
     (dc ? '<p class="note2">Nhập số đếm thực tế của từng mã – hệ thống tự tính chênh lệch so với tồn hiện tại và ghi phiếu điều chỉnh.</p>' : '') +
     '<div class="sh2">Hàng hoá</div><div class="it"><table><thead><tr><th style="width:70px">STT</th><th>Tên sản phẩm</th>' + (dc ? '<th class="r" style="width:90px">Tồn hiện tại</th><th style="width:110px">Tồn thực tế</th><th class="r" style="width:90px">Chênh lệch</th>' : '<th style="width:100px">Số lượng</th><th style="width:130px">' + (KE.loai === 'Nhập' ? 'Giá nhập' : 'Đơn giá') + '</th>') + '<th style="width:36px"></th></tr></thead><tbody>' +
@@ -594,12 +597,12 @@ function renderKhoEd() {
     (KE.loai === 'Nhập' ? '<button class="btn sec" onclick="khoAddGroup()">Thêm cả nhóm hàng…</button>' : '') + '</div>' +
     '<div class="mfoot"><button class="btn acc" onclick="saveKho()">Lưu phiếu</button><span class="sp"></span><button class="btn sec" onclick="closeM(\'km\')">Đóng</button></div>';
 }
-function khoAdd() { var p = findSP($('kadd').value); if (!p) return; if (!KE.items.some(function (x) { return x.s === p.stt; })) KE.items.push({ s: p.stt, m: p.ma, t: p.ten, q: KE.loai === 'Điều chỉnh' ? 0 : 1, g: 0, thucte: null }); renderKhoEd(); $('kadd').focus(); }
+function khoAdd() { var p = findSP($('kadd').value); if (!p) return; if (!KE.items.some(function (x) { return x.s === p.stt; })) KE.items.push({ s: p.stt, m: p.ma, t: p.ten, q: KE.loai === 'Điều chỉnh' ? 0 : 1, g: KE.loai === 'Nhập' ? lastPrice(p.stt) : 0, thucte: null }); renderKhoEd(); $('kadd').focus(); }
 function khoAddGroup() {
   var cats = []; SP.forEach(function (p) { if (p.nhom && cats.indexOf(p.nhom) < 0) cats.push(p.nhom); });
   var c = prompt('Gõ số thứ tự nhóm cần thêm:\n' + cats.map(function (x, i) { return (i + 1) + '. ' + x; }).join('\n')); if (!c) return;
   var nh = cats[Number(c) - 1]; if (!nh) return;
-  SP.filter(function (p) { return p.nhom === nh; }).forEach(function (p) { if (!KE.items.some(function (x) { return x.s === p.stt; })) KE.items.push({ s: p.stt, m: p.ma, t: p.ten, q: 0, g: 0 }); });
+  SP.filter(function (p) { return p.nhom === nh; }).forEach(function (p) { if (!KE.items.some(function (x) { return x.s === p.stt; })) KE.items.push({ s: p.stt, m: p.ma, t: p.ten, q: 0, g: lastPrice(p.stt) }); });
   renderKhoEd();
 }
 document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.id === 'kadd') { e.preventDefault(); khoAdd(); } });
