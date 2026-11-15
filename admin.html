@@ -262,7 +262,7 @@ header h1{white-space:nowrap}
       <div class="fl" style="margin-top:8px"><label>Địa chỉ kho / gửi hàng</label><input class="f" id="s_DIACHI"></div>
       <div class="sh2">Thông tin chuyển khoản (in trên phiếu bán hàng)</div>
       <div class="g2">
-        <div><label>Ngân hàng</label><input class="f" id="s_NGANHANG" placeholder="VD: TPBank"></div>
+        <div><label>Ngân hàng</label><input class="f" id="s_NGANHANG" list="bankdl" placeholder="Chọn hoặc gõ tên ngân hàng" oninput="bankNote()" onchange="bankNote()"><div class="note2" id="bnote"></div></div>
         <div><label>Số tài khoản</label><input class="f" id="s_STK"></div>
         <div><label>Chủ tài khoản</label><input class="f" id="s_CHUTK"></div>
       </div>
@@ -490,7 +490,7 @@ function pageGiao(d) {
 function pageBan(d) {
   var t = totals(d), i = 0;
   var rows = d.items.map(function (x) { i++; return '<tr><td class="c">' + i + '</td><td>' + esc(x.t) + '<div class="mu">' + esc([x.s, x.m].filter(Boolean).join(' · ')) + '</div></td><td class="c">' + esc(dvt(x.s)) + '</td><td class="r">' + num(x.q) + '</td><td class="r">' + (num(x.g) ? num(x.g).toLocaleString('vi-VN') : '') + '</td><td class="r">' + (num(x.g) ? (num(x.q) * num(x.g)).toLocaleString('vi-VN') : '') + '</td></tr>'; }).join('');
-  var bank = SET.STK ? '<div class="bank">Chuyển khoản: <b>' + esc(SET.NGANHANG) + ' – ' + esc(SET.STK) + '</b>' + (SET.CHUTK ? ' – ' + esc(SET.CHUTK) : '') + '<br>Nội dung: <b>' + esc(d.ma) + ' ' + esc(d.sdt) + '</b></div>' : '';
+  var bank = payBlock(d, t.con || (t.tong && !num(d.dathu) ? t.tong : 0));
   return '<section class="pg doc">' + shopHead('PHIẾU BÁN HÀNG', d.ma || '(chưa lưu)', dateOf(d)) +
     '<div class="kh"><div>Khách hàng: <b>' + esc(d.ten) + '</b>' + (d.cuahang ? ' – ' + esc(d.cuahang) : '') + '</div><div>Điện thoại: ' + esc(d.sdt) + '</div><div>Địa chỉ: ' + esc(d.diachi) + (d.tinh ? ', ' + esc(d.tinh) : '') + '</div></div>' +
     hdPrint(d) + '<table class="tb"><thead><tr><th class="c">#</th><th>Tên hàng</th><th class="c">ĐVT</th><th class="r">SL</th><th class="r">Đơn giá</th><th class="r">Thành tiền</th></tr></thead><tbody>' + rows + '</tbody></table>' +
@@ -507,7 +507,7 @@ function pageXuat(d) {
   return '<section class="pg doc">' + shopHead('PHIẾU XUẤT KHO', 'PX-' + (d.ma || ''), today()) +
     '<div class="kh"><div>Người nhận: <b>' + esc(d.ten) + '</b>' + (d.cuahang ? ' – ' + esc(d.cuahang) : '') + ' · ' + esc(d.sdt) + '</div><div>Địa chỉ: ' + esc(d.diachi) + (d.tinh ? ', ' + esc(d.tinh) : '') + '</div><div>Lý do xuất: Xuất bán theo đơn <b>' + esc(d.ma) + '</b>' + (d.dvvc ? ' · Giao qua: ' + esc(d.dvvc) + (d.mavd ? ' (' + esc(d.mavd) + ')' : '') : '') + '</div></div>' +
     '<table class="tb"><thead><tr><th class="c">#</th><th>STT</th><th>Tên hàng</th><th class="c">ĐVT</th><th class="r">Số lượng</th><th style="width:22%">Ghi chú</th></tr></thead><tbody>' + rows + '<tr class="b"><td colspan="4" class="r">Tổng cộng</td><td class="r">' + t.sl + '</td><td></td></tr></tbody></table>' +
-    '<div class="sig s3"><div><b>Người lập phiếu</b><br><i>(Ký, ghi rõ họ tên)</i></div><div><b>Thủ kho</b><br><i>(Ký, ghi rõ họ tên)</i></div><div><b>Người nhận hàng</b><br><i>(Ký, ghi rõ họ tên)</i></div></div></section>';
+    payBlock(d, t.con) + '<div class="sig s3"><div><b>Người lập phiếu</b><br><i>(Ký, ghi rõ họ tên)</i></div><div><b>Thủ kho</b><br><i>(Ký, ghi rõ họ tên)</i></div><div><b>Người nhận hàng</b><br><i>(Ký, ghi rõ họ tên)</i></div></div></section>';
 }
 function pageKho(p) {
   var i = 0, sl = 0, gt = 0, title = p.loai === 'Nhập' ? 'PHIẾU NHẬP KHO' : p.loai === 'Xuất' ? 'PHIẾU XUẤT KHO' : 'PHIẾU ĐIỀU CHỈNH KHO';
@@ -528,7 +528,7 @@ var PRINT_CSS = '*{box-sizing:border-box}body{margin:0;font-family:"Be Vietnam P
   '.giao .goods{font-size:10.5px;line-height:1.4;flex:1;overflow:hidden}.giao .cod{font-size:16px;font-weight:800;text-align:center;border:2px solid #111;padding:2mm;border-radius:2mm}.giao .cod.ok{border-style:dashed}.giao .cod.na{font-size:13px}.giao .cw{text-align:center;font-size:10px;font-style:italic}.giao .gc{font-size:11px}' +
   '.doc{padding:0}.hd{display:flex;justify-content:space-between;gap:6mm;border-bottom:2px solid #111;padding-bottom:3mm;margin-bottom:3mm;font-size:11px;line-height:1.45}.hd .sn{font-size:15px;font-weight:800}.hd .rt{text-align:right}.hd .tt{font-size:17px;font-weight:800;letter-spacing:.02em}' +
   '.kh{line-height:1.6;margin-bottom:3mm}.tb{width:100%;border-collapse:collapse}.tb th,.tb td{border:1px solid #777;padding:1.5mm 2mm;vertical-align:top}.tb th{background:#eee;font-size:11px}.c{text-align:center}.r{text-align:right}.mu{font-size:10px;color:#555}tr.b td{font-weight:800}' +
-  '.tt2{margin:3mm 0 0 auto;border-collapse:collapse;min-width:60%}.tt2 td{padding:1mm 2mm}.tt2 tr.b td{font-size:13px;border-top:1px solid #111}.chu{margin-top:2mm}.bank{margin-top:2mm;border:1px dashed #777;padding:2mm}' +
+  '.tt2{margin:3mm 0 0 auto;border-collapse:collapse;min-width:60%}.tt2 td{padding:1mm 2mm}.tt2 tr.b td{font-size:13px;border-top:1px solid #111}.chu{margin-top:2mm}.bank{margin-top:2mm;border:1px dashed #777;padding:2mm}.pay{display:flex;gap:4mm;align-items:center}.pay img{width:30mm;height:30mm;flex:0 0 auto}.pay .pt{line-height:1.55}.pay .amt{font-size:14px;font-weight:800}.pay .vq{font-size:10px;color:#555}' +
   '.sig{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:6mm;min-height:28mm}.sig.s3{grid-template-columns:1fr 1fr 1fr}.ft{text-align:center;font-style:italic;margin-top:3mm;font-size:11px}';
 function printDocs(kind, list) {
   if (!list.length) return alert('Chưa chọn đơn nào.');
@@ -776,7 +776,37 @@ function exportHd() {
 
 /* ================= CÀI ĐẶT ================= */
 var SKEYS = ['TEN_SHOP', 'HOTLINE', 'ZALO', 'DIACHI', 'MST', 'NGANHANG', 'STK', 'CHUTK', 'CHAN_PHIEU', 'NGUONG_HET', 'KHO_PHIEU'];
-function fillSettings() { SKEYS.forEach(function (k) { var el = $('s_' + k); if (el) el.value = SET[k] || ''; }); $('smsg').textContent = ''; }
+function fillSettings() { SKEYS.forEach(function (k) { var el = $('s_' + k); if (el) el.value = SET[k] || ''; }); $('smsg').textContent = ''; if (!$('bankdl')) { var dl = document.createElement('datalist'); dl.id = 'bankdl'; dl.innerHTML = BANKS.map(function (b) { return '<option value="' + b[1] + '">'; }).join(''); document.body.appendChild(dl); } bankNote(); }
+/* ---- Mã QR chuyển khoản VietQR (chuẩn NAPAS, tạo ngay trong trình duyệt) ---- */
+var BANKS = [['970407', 'Techcombank', 'techcom|teckcom|tcb|ky thuong'], ['970436', 'Vietcombank', 'vietcom|vcb|ngoai thuong'], ['970415', 'VietinBank', 'vietin|cong thuong|ctg'], ['970418', 'BIDV', 'bidv|dau tu va phat trien'],
+  ['970405', 'Agribank', 'agri|nong nghiep'], ['970422', 'MB Bank', 'mb|quan doi|military'], ['970416', 'ACB', 'acb|a chau'], ['970432', 'VPBank', 'vpb|vp bank|viet nam thinh vuong'], ['970423', 'TPBank', 'tpb|tp bank|tien phong'],
+  ['970403', 'Sacombank', 'sacom|sai gon thuong tin|stb'], ['970441', 'VIB', 'vib|quoc te'], ['970443', 'SHB', 'shb|sai gon ha noi'], ['970437', 'HDBank', 'hdb|hd bank|phat trien tp'], ['970448', 'OCB', 'ocb|phuong dong'],
+  ['970426', 'MSB', 'msb|maritime|hang hai'], ['970440', 'SeABank', 'seab|dong nam a'], ['970431', 'Eximbank', 'exim'], ['970449', 'LPBank', 'lpb|lienviet|loc phat'], ['970428', 'Nam A Bank', 'nam a|nab'], ['970454', 'Viet Capital Bank', 'ban viet|viet capital|bvb'],
+  ['970429', 'SCB', 'scb|sai gon'], ['970425', 'ABBANK', 'abb|an binh'], ['970427', 'VietABank', 'viet a|vab'], ['970409', 'BacABank', 'bac a|bab'], ['970412', 'PVcomBank', 'pvcom|dai chung'], ['970430', 'PG Bank', 'pg bank|xang dau'], ['970433', 'VietBank', 'vietbank|viet nam thuong tin'], ['970438', 'BaoVietBank', 'bao viet'], ['970452', 'KienlongBank', 'kien long|klb'], ['970414', 'OceanBank', 'ocean']];
+function bankOf(name) {
+  var n = nrm(name).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); if (!n) return null;
+  var nz = n.replace(/\s/g, '');
+  for (var i = 0; i < BANKS.length; i++) { var b = BANKS[i]; if (nz === nrm(b[1]).replace(/\s/g, '')) return b; }
+  for (i = 0; i < BANKS.length; i++) { b = BANKS[i]; if (b[2].split('|').some(function (k) { k = k.replace(/\s/g, ''); return k.length > 2 ? nz.indexOf(k) >= 0 : nz === k || nz === k + 'bank'; })) return b; }
+  return null;
+}
+function bankNote() { var el = $('bnote'); if (!el) return; var v = $('s_NGANHANG').value, b = bankOf(v); el.style.color = b || !v ? '' : '#c2401f'; el.textContent = !v ? 'Chọn ngân hàng để in mã QR chuyển khoản trên phiếu.' : b ? '✓ Nhận diện: ' + b[1] + ' – mã QR chuyển khoản sẽ in trên phiếu.' : 'Chưa nhận diện được ngân hàng – hãy chọn từ danh sách để in mã QR.'; }
+function tlv(id, v) { v = String(v); return id + ('0' + v.length).slice(-2) + v; }
+function crc16(s) { var c = 0xFFFF; for (var i = 0; i < s.length; i++) { c ^= s.charCodeAt(i) << 8; for (var j = 0; j < 8; j++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } return ('000' + c.toString(16).toUpperCase()).slice(-4); }
+function vietqr(bin, acc, amount, info) {
+  var s = tlv('00', '01') + tlv('01', amount ? '12' : '11') + tlv('38', tlv('00', 'A000000727') + tlv('01', tlv('00', bin) + tlv('01', acc)) + tlv('02', 'QRIBFTTA')) +
+    tlv('53', '704') + (amount ? tlv('54', String(Math.round(amount))) : '') + tlv('58', 'VN') + (info ? tlv('62', tlv('08', info)) : '') + '6304';
+  return s + crc16(s);
+}
+function payBlock(d, amount) {
+  if (!SET.STK) return '';
+  var b = bankOf(SET.NGANHANG), acc = String(SET.STK).replace(/\s/g, ''), info = nrm(((d.ma || '') + ' ' + (d.sdt || '')).trim()).replace(/[^a-z0-9 ]/gi, '').toUpperCase().slice(0, 25);
+  var qr = b && /^\d{6,19}$/.test(acc) ? qrData(vietqr(b[0], acc, amount, info), 220) : '';
+  return '<div class="bank pay">' + (qr ? '<img src="' + qr + '" alt="QR chuyển khoản">' : '') + '<div class="pt">' +
+    (qr ? '<div class="amt">' + (amount ? 'Quét mã để chuyển ' + vnd0(amount) : 'Quét mã để chuyển khoản') + '</div>' : '') +
+    'Ngân hàng: <b>' + esc(b ? b[1] : SET.NGANHANG) + '</b> · STK: <b>' + esc(SET.STK) + '</b>' + (SET.CHUTK ? '<br>Chủ tài khoản: <b>' + esc(SET.CHUTK) + '</b>' : '') +
+    '<br>Nội dung: <b>' + esc(info || d.ma) + '</b>' + (qr ? '<div class="vq">VietQR · quét bằng app ngân hàng bất kỳ, số tiền và nội dung tự điền sẵn</div>' : '') + '</div></div>';
+}
 function saveSettings() {
   var o = {}; SKEYS.forEach(function (k) { o[k] = $('s_' + k).value.trim(); });
   run('adminSaveSettings', PASS, o).then(function (r) { SET = r; SHOP.TEN_SHOP = r.TEN_SHOP; SHOP.HOTLINE = r.HOTLINE; $('smsg').textContent = 'Đã lưu.'; toast('Đã lưu cài đặt'); }).catch(function (e) { alert(e.message); });
