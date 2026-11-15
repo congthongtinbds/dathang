@@ -272,6 +272,7 @@ header h1{white-space:nowrap}
         <div><label>Báo "sắp hết" khi tồn ≤</label><input class="f" id="s_NGUONG_HET" inputmode="numeric"></div>
         <div><label>Khổ phiếu giao hàng</label><select class="f" id="s_KHO_PHIEU"><option value="100x150">100 × 150 mm (máy in nhiệt)</option><option value="A6">A6 (105 × 148 mm)</option><option value="A5">A5 (2 phiếu / tờ A4)</option></select></div>
       </div>
+      <div class="sh2">Hoá đơn điện tử MISA meInvoice</div><div id="misast" class="note2" style="line-height:1.7">Đang kiểm tra…</div>
       <div style="margin-top:14px;display:flex;gap:8px;align-items:center"><button class="btn acc" onclick="saveSettings()">Lưu cài đặt</button><span id="smsg" class="note2"></span></div>
     </div>
   </section>
@@ -375,7 +376,7 @@ $('ol').addEventListener('click', function (e) { var tr = e.target.closest('tr[d
 /* ---- Màn hình sửa / tạo đơn ---- */
 function orderObj(o) {
   var it = (LBY[o.ma] || []).map(function (l) { return { s: l.s, m: l.m, t: l.t, q: l.q, g: l.g }; });
-  return { ma: o.ma, tg: o.tg, ten: o.ten, cuahang: o.ch, sdt: o.sdt, tinh: o.tinh, diachi: o.dc, ghichu: o.gc, items: it, giam: o.giam, ship: o.ship, dathu: o.dathu, dvvc: o.dvvc, mavd: o.mavd, tt: o.tt, noibo: o.noibo, nguon: o.nguon, xhd: !!o.xhd, hdl: o.hdl || 'CN', hdt: o.hdt || '', hdm: o.hdm || '', hdd: o.hdd || '', hde: o.hde || '', hds: o.hds || '' };
+  return { ma: o.ma, tg: o.tg, ten: o.ten, cuahang: o.ch, sdt: o.sdt, tinh: o.tinh, diachi: o.dc, ghichu: o.gc, items: it, giam: o.giam, ship: o.ship, dathu: o.dathu, dvvc: o.dvvc, mavd: o.mavd, tt: o.tt, noibo: o.noibo, nguon: o.nguon, xhd: !!o.xhd, hdl: o.hdl || 'CN', hdt: o.hdt || '', hdm: o.hdm || '', hdd: o.hdd || '', hde: o.hde || '', hds: o.hds || '', hdtc: o.hdtc || '', hdtt: o.hdtt || '', hdkh: o.hdkh || '' };
 }
 function totals(d) { var sl = 0, tien = 0; d.items.forEach(function (x) { sl += num(x.q); tien += num(x.q) * num(x.g); }); var tong = Math.max(0, tien - num(d.giam) + num(d.ship)); return { sl: sl, tien: tien, tong: tong, con: Math.max(0, tong - num(d.dathu)) }; }
 function openOrder(ma) {
@@ -446,7 +447,7 @@ function saveOrder(after) {
   if (!d.items.some(function (x) { return num(x.q) > 0; })) return alert('Đơn phải có ít nhất 1 sản phẩm.');
   var payload = JSON.parse(JSON.stringify(d));
   return run('adminSaveOrder', PASS, payload).then(function (r) {
-    toast('Đã lưu đơn ' + r.ma); ED.ma = r.ma;
+    toast('Đã lưu đơn ' + r.ma); ED.ma = r.ma; if (r.inv && r.inv.msg) setTimeout(function () { alert(r.inv.msg); }, 300);
     return loadAll().then(function () { if (after) after(); else closeM('om'); });
   }).catch(function (e) { alert(e.message); });
 }
@@ -749,7 +750,23 @@ function viewDl(sdt) { $('fq').value = sdt; $('fs').value = ''; $('fp').value = 
 function exportDl() { var rows = [['Đại lý', 'Cửa hàng', 'SĐT', 'Tỉnh', 'Địa chỉ', 'Số đơn', 'SL', 'Doanh thu', 'Đã thu', 'Công nợ', 'Đặt gần nhất']]; dlData().forEach(function (d) { rows.push([d.ten, d.ch, d.sdt, d.tinh, d.dc, d.don, d.sl, d.tien, d.thu, d.no, d.lastS]); }); csv(rows, 'dai-ly.csv'); }
 
 /* ================= HOÁ ĐƠN ================= */
-function hdEd() {
+function hdEd() { return hdEd0() + misaBlock(); }
+function misaBlock() {
+  var d = ED; if (!d.ma) return '';
+  var done = d.hdtt === 'Đã phát hành', err = /^Lỗi/.test(d.hdtt || '');
+  return '<div class="hdsec" style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b style="font-size:13px">Hoá đơn điện tử MISA:</b>' +
+    (done ? '<span class="hdb da" style="font-size:12px">Đã phát hành – số ' + esc(d.hds) + (d.hdkh ? ' · ký hiệu ' + esc(d.hdkh) : '') + '</span>' + (d.hdtc ? '<span class="note2" style="margin:0">Mã tra cứu: <b>' + esc(d.hdtc) + '</b> (tra cứu tại meinvoice.vn/tra-cuu)</span>' : '')
+      : (err ? '<span class="note2" style="margin:0;color:#c2401f">' + esc(d.hdtt) + '</span>' : '<span class="note2" style="margin:0">Chưa phát hành</span>') +
+        '<button class="btn sec sm" onclick="issueInv()">Phát hành hoá đơn ngay</button>') + '</div>';
+}
+function issueInv() {
+  var t = totals(ED); if (!t.tong) return alert('Đơn chưa có giá – nhập đơn giá trước.');
+  if (!confirm('Phát hành hoá đơn điện tử cho đơn ' + ED.ma + ' – ' + vnd0(t.tong) + '?\nHệ thống sẽ lưu đơn rồi gửi sang MISA để ký và gửi cơ quan thuế. Hoá đơn đã phát hành không xoá được, chỉ có thể điều chỉnh / thay thế trên MISA.')) return;
+  saveOrder(function () {
+    run('adminIssueInvoice', PASS, ED.ma).then(function (r) { alert(r.msg); loadAll().then(function () { openOrder(ED.ma); }); }).catch(function (e) { alert(e.message); });
+  });
+}
+function hdEd0() {
   var d = ED, dn = d.hdl === 'DN';
   return '<div class="sh2">Thông tin xuất hoá đơn</div><label style="display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer"><input type="checkbox" class="chk"' + (d.xhd ? ' checked' : '') + ' onchange="ED.xhd=this.checked;ED.hdt=ED.hdt||ED.ten;ED.hdd=ED.hdd||[ED.diachi,ED.tinh].filter(Boolean).join(\', \');renderEditor()"> Khách yêu cầu xuất hoá đơn</label>' +
     (d.xhd ? '<div class="hdsec"><div class="g2"><div><label>Loại người mua</label><select class="f" onchange="ED.hdl=this.value;renderEditor()"><option value="CN"' + (dn ? '' : ' selected') + '>Cá nhân</option><option value="DN"' + (dn ? ' selected' : '') + '>Doanh nghiệp / hộ KD</option></select></div>' +
@@ -776,7 +793,14 @@ function exportHd() {
 
 /* ================= CÀI ĐẶT ================= */
 var SKEYS = ['TEN_SHOP', 'HOTLINE', 'ZALO', 'DIACHI', 'MST', 'NGANHANG', 'STK', 'CHUTK', 'CHAN_PHIEU', 'NGUONG_HET', 'KHO_PHIEU'];
-function fillSettings() { SKEYS.forEach(function (k) { var el = $('s_' + k); if (el) el.value = SET[k] || ''; }); $('smsg').textContent = ''; if (!$('bankdl')) { var dl = document.createElement('datalist'); dl.id = 'bankdl'; dl.innerHTML = BANKS.map(function (b) { return '<option value="' + b[1] + '">'; }).join(''); document.body.appendChild(dl); } bankNote(); }
+function fillSettings() { SKEYS.forEach(function (k) { var el = $('s_' + k); if (el) el.value = SET[k] || ''; }); $('smsg').textContent = ''; if (!$('bankdl')) { var dl = document.createElement('datalist'); dl.id = 'bankdl'; dl.innerHTML = BANKS.map(function (b) { return '<option value="' + b[1] + '">'; }).join(''); document.body.appendChild(dl); } bankNote(); misaSt(); }
+function misaSt() {
+  run('adminMisaStatus', PASS).then(function (s) {
+    $('misast').innerHTML = !s.ready ? 'Chưa kết nối. Trên Google Sheet chọn menu <b>Đặt hàng QR › 10. Cài kết nối hoá đơn điện tử MISA</b> (nhập AppID, mã số thuế, tài khoản, ký hiệu hoá đơn), rồi menu 11 để kiểm tra.'
+      : '✓ Đã kết nối – <b>' + (s.test ? 'môi trường THỬ NGHIỆM' : 'môi trường CHÍNH THỨC') + '</b> · ' + esc(s.name) + ' · ký hiệu <b>' + esc(s.series) + '</b>' + (s.vat ? ' · thuế suất ' + esc(s.vat) : ' · không có dòng thuế GTGT') +
+        '<br>Tự phát hành khi đã thu đủ tiền: <b>' + (s.auto ? 'BẬT' : 'TẮT') + '</b>' + (s.auto ? ' (' + (s.scope === 'all' ? 'mọi đơn' : 'chỉ đơn khách yêu cầu hoá đơn') + ')' : '') + ' – đổi ở menu 12 trên Google Sheet.';
+  }).catch(function () { $('misast').textContent = 'Cần cập nhật Code.gs mới để dùng hoá đơn điện tử.'; });
+}
 /* ---- Mã QR chuyển khoản VietQR (chuẩn NAPAS, tạo ngay trong trình duyệt) ---- */
 var BANKS = [['970407', 'Techcombank', 'techcom|teckcom|tcb|ky thuong'], ['970436', 'Vietcombank', 'vietcom|vcb|ngoai thuong'], ['970415', 'VietinBank', 'vietin|cong thuong|ctg'], ['970418', 'BIDV', 'bidv|dau tu va phat trien'],
   ['970405', 'Agribank', 'agri|nong nghiep'], ['970422', 'MB Bank', 'mb|quan doi|military'], ['970416', 'ACB', 'acb|a chau'], ['970432', 'VPBank', 'vpb|vp bank|viet nam thinh vuong'], ['970423', 'TPBank', 'tpb|tp bank|tien phong'],
