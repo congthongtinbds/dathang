@@ -97,6 +97,9 @@ label i{color:var(--acc);font-style:normal}
 .f{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit}
 textarea.f{min-height:64px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hdck{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:14px;cursor:pointer}.hdck input{width:20px;height:20px}
+.hdbox{border:1px solid var(--line);border-radius:12px;padding:4px 12px 12px;margin-top:8px;background:#fafbfd}.hdbox.off{display:none}
+.seg{display:flex;gap:8px;margin-top:10px}.seg label{flex:1;margin:0;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-weight:600;cursor:pointer;background:#fff}.seg label.on{border-color:var(--ink);background:var(--ink);color:#fff}.seg input{display:none}
 .err{color:#c0392b;font-size:13px;min-height:18px;margin-top:8px}
 .note{font-size:12px;color:var(--mut);margin-top:8px}
 .done{text-align:center;padding:10px 0}
@@ -283,16 +286,43 @@ function formHtml() {
     '<div class="row2"><div><label>Số điện thoại <i>*</i></label><input class="f" id="f_sdt" inputmode="tel" value="' + esc(d.sdt) + '" autocomplete="tel"></div>' +
     '<div><label>Tỉnh / thành</label><input class="f" id="f_tinh" value="' + esc(d.tinh) + '"></div></div>' +
     '<label>Địa chỉ nhận hàng <i>*</i></label><textarea class="f" id="f_dc" autocomplete="street-address">' + esc(d.diachi) + '</textarea>' +
-    '<label>Ghi chú</label><textarea class="f" id="f_gc" placeholder="Thời gian nhận, yêu cầu xuất hoá đơn…"></textarea>' +
+    '<label>Ghi chú</label><textarea class="f" id="f_gc" placeholder="Thời gian nhận, yêu cầu khác…"></textarea>' + hdHtml() +
     '<div class="err" id="f_err"></div>' +
     '<div style="display:flex;gap:10px;margin-top:6px"><button class="btn sec" style="flex:1" onclick="openSheet(cartHtml())">Xem giỏ</button><button class="btn" style="flex:2" id="f_go" onclick="submitOrder()">Gửi đơn hàng</button></div>' +
     '<div class="note">Thông tin được lưu trên máy này để lần sau đặt nhanh hơn.</div>');
+}
+function hdHtml() {
+  var h = LS.get('qr_hd') || {}, dn = h.loai === 'DN';
+  return '<label class="hdck"><input type="checkbox" id="hd_on" onchange="$(\'hdbox\').classList.toggle(\'off\',!this.checked)"' + (h.on ? ' checked' : '') + '> Lấy hoá đơn cho đơn hàng này</label>' +
+    '<div class="hdbox' + (h.on ? '' : ' off') + '" id="hdbox">' +
+    '<div class="seg"><label class="' + (dn ? '' : 'on') + '"><input type="radio" name="hdl" value="CN"' + (dn ? '' : ' checked') + ' onchange="hdType()">Cá nhân</label><label class="' + (dn ? 'on' : '') + '"><input type="radio" name="hdl" value="DN"' + (dn ? ' checked' : '') + ' onchange="hdType()">Doanh nghiệp / hộ KD</label></div>' +
+    '<label id="hd_tl">' + (dn ? 'Tên đơn vị' : 'Họ tên người mua') + ' <i>*</i></label><input class="f" id="hd_ten" value="' + esc(h.ten) + '">' +
+    '<label id="hd_ml">' + (dn ? 'Mã số thuế' : 'Số CCCD') + ' <i>*</i></label><input class="f" id="hd_ms" inputmode="numeric" autocomplete="off" value="' + esc(dn ? h.ms : '') + '" placeholder="' + (dn ? '10 hoặc 13 số' : '12 số') + '">' +
+    '<div class="note" id="hd_note">' + (dn ? 'Nhập mã số thuế của doanh nghiệp / hộ kinh doanh (10 hoặc 13 số).' : 'Nếu bạn là cá nhân, nhập số CCCD (12 số) để in trên hoá đơn.') + '</div>' +
+    '<label>Địa chỉ trên hoá đơn</label><input class="f" id="hd_dc" value="' + esc(h.dc) + '" placeholder="Để trống nếu trùng địa chỉ nhận hàng">' +
+    '<label>Email nhận hoá đơn điện tử</label><input class="f" id="hd_em" inputmode="email" autocomplete="email" value="' + esc(h.em) + '"></div>';
+}
+function hdType() {
+  var dn = document.querySelector('input[name=hdl]:checked').value === 'DN';
+  [].forEach.call(document.querySelectorAll('.seg label'), function (l) { l.classList.toggle('on', l.querySelector('input').checked); });
+  $('hd_tl').innerHTML = (dn ? 'Tên đơn vị' : 'Họ tên người mua') + ' <i>*</i>'; $('hd_ml').innerHTML = (dn ? 'Mã số thuế' : 'Số CCCD') + ' <i>*</i>';
+  $('hd_ms').placeholder = dn ? '10 hoặc 13 số' : '12 số'; $('hd_ms').value = '';
+  $('hd_note').textContent = dn ? 'Nhập mã số thuế của doanh nghiệp / hộ kinh doanh (10 hoặc 13 số).' : 'Nếu bạn là cá nhân, nhập số CCCD (12 số) để in trên hoá đơn.';
 }
 function submitOrder() {
   var o = { ten: $('f_ten').value.trim(), cuahang: $('f_ch').value.trim(), sdt: $('f_sdt').value.replace(/\s|\./g, ''), tinh: $('f_tinh').value.trim(),
     diachi: $('f_dc').value.trim(), ghichu: $('f_gc').value.trim(), nguon: SP0 ? 'QR sp ' + SP0 : (NHOM0 ? 'QR nhóm ' + NHOM0 : 'QR chung') };
   if (!o.ten || !o.sdt || !o.diachi) { $('f_err').textContent = 'Vui lòng nhập họ tên, số điện thoại và địa chỉ.'; return; }
   if (!/^(\+?84|0)\d{8,10}$/.test(o.sdt)) { $('f_err').textContent = 'Số điện thoại chưa đúng.'; return; }
+  if ($('hd_on') && $('hd_on').checked) {
+    var hl = document.querySelector('input[name=hdl]:checked').value, ms = $('hd_ms').value.replace(/[\s.]/g, '');
+    o.hd = { loai: hl, ten: $('hd_ten').value.trim(), maso: ms, diachi: $('hd_dc').value.trim() || o.diachi, email: $('hd_em').value.trim() };
+    if (!o.hd.ten) { $('f_err').textContent = 'Vui lòng nhập ' + (hl === 'DN' ? 'tên đơn vị' : 'họ tên người mua') + ' để xuất hoá đơn.'; return; }
+    if (hl === 'CN' && !/^\d{12}$/.test(ms)) { $('f_err').textContent = 'Số CCCD phải gồm 12 chữ số.'; return; }
+    if (hl === 'DN' && !/^\d{10}(-?\d{3})?$/.test(ms)) { $('f_err').textContent = 'Mã số thuế phải gồm 10 hoặc 13 chữ số.'; return; }
+    if (o.hd.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.hd.email)) { $('f_err').textContent = 'Email nhận hoá đơn chưa đúng.'; return; }
+    LS.set('qr_hd', { on: 1, loai: hl, ten: o.hd.ten, ms: hl === 'DN' ? ms : '', dc: $('hd_dc').value.trim(), em: o.hd.email });  // không lưu số CCCD trên máy
+  } else { var hh = LS.get('qr_hd'); if (hh) { hh.on = 0; LS.set('qr_hd', hh); } }
   LS.set('qr_daily', { ten: o.ten, cuahang: o.cuahang, sdt: o.sdt, tinh: o.tinh, diachi: o.diachi });
   o.items = Object.keys(cart).map(function (s) { return { s: s, q: cart[s] }; });
   $('f_go').disabled = true; $('f_go').textContent = 'Đang gửi…'; $('f_err').textContent = '';

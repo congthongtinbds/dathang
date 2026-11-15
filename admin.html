@@ -133,6 +133,8 @@ header h1{white-space:nowrap}
 .hb{height:6px;border-radius:3px;background:#3a5bd9;opacity:.85}
 .setg{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;max-width:820px}
 .note2{font-size:12.5px;color:var(--mut);margin:6px 0 0}
+.hdb{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:1px;text-decoration:none}.hdb.can{background:#fff1d6;color:#9a5b00;border:1px solid #f0c674}.hdb.da{background:#dcf5ea;color:#13734d}
+.hdsec{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;background:#fafbfd}
 </style>
 </head>
 <body>
@@ -154,6 +156,7 @@ header h1{white-space:nowrap}
       <select id="fs" class="f"><option value="">Tất cả trạng thái</option><option>Mới</option><option>Đã xác nhận</option><option>Đang giao</option><option>Hoàn thành</option><option>Huỷ</option></select>
       <select id="fp" class="f"><option value="">Mọi thanh toán</option><option value="no">Chưa thu</option><option value="part">Thu một phần</option><option value="ok">Đã thu đủ</option><option value="na">Chưa báo giá</option></select>
       <select id="fd" class="f"><option value="">Mọi ngày</option><option value="0">Hôm nay</option><option value="7">7 ngày</option><option value="30">30 ngày</option></select>
+      <select id="fh" class="f"><option value="">Hoá đơn: tất cả</option><option value="can">Cần xuất hoá đơn</option><option value="da">Đã xuất hoá đơn</option></select>
       <input id="fq" class="f" placeholder="Tìm mã đơn, tên, SĐT, địa chỉ, mã vận đơn, mã SP…" style="flex:1;min-width:200px">
     </div>
     <div class="tool">
@@ -164,6 +167,7 @@ header h1{white-space:nowrap}
       <span style="flex:1"></span>
       <button class="btn sec" onclick="loadAll()">Tải lại</button>
       <button class="btn sec" onclick="exportCsv()">Xuất CSV</button>
+      <button class="btn sec" onclick="exportHd()">Xuất DS hoá đơn</button>
     </div>
     <div class="olist"><table><thead><tr><th><input type="checkbox" class="chk" id="chkall"></th><th>Đơn / thời gian</th><th>Khách hàng</th><th>Tỉnh</th><th class="r">SL</th><th class="r">Tổng tiền</th><th>Thanh toán</th><th>Vận chuyển</th><th>Trạng thái</th></tr></thead><tbody id="ol"></tbody></table></div>
   </section>
@@ -333,13 +337,14 @@ function payOf(o) {
   return { k: 'no', t: 'Chưa thu' };
 }
 var SEL = {};
-['fs', 'fp', 'fd'].forEach(function (id) { $(id).onchange = renderOrders; }); $('fq').oninput = renderOrders;
+['fs', 'fp', 'fd', 'fh'].forEach(function (id) { $(id).onchange = renderOrders; }); $('fq').oninput = renderOrders;
 $('chkall').onchange = function () { var on = this.checked; curList().forEach(function (o) { if (on) SEL[o.ma] = 1; else delete SEL[o.ma]; }); renderOrders(); };
 function curList() {
   var s = $('fs').value, p = $('fp').value, d = $('fd').value, q = nrm($('fq').value.trim());
   var t0 = new Date(); t0.setHours(0, 0, 0, 0); var from = d === '' ? 0 : t0.getTime() - Number(d) * 86400000;
   return ORD.filter(function (o) {
     if (s && o.tt !== s) return false; if (p && payOf(o).k !== p) return false; if (from && o.ts < from) return false;
+    var fh = $('fh').value; if (fh === 'can' && !(o.xhd && !o.hds && o.tt !== 'Huỷ')) return false; if (fh === 'da' && !(o.xhd && o.hds)) return false;
     return !q || nrm([o.ma, o.ten, o.ch, o.sdt, o.dc, o.tinh, o.ct, o.mavd, o.dvvc].join(' ')).indexOf(q) >= 0;
   });
 }
@@ -358,7 +363,7 @@ function renderOrders() {
     var py = payOf(o), cls = o.tt === 'Mới' ? 'new' : o.tt === 'Huỷ' ? 'huy' : o.tt === 'Hoàn thành' ? 'done' : '';
     return '<tr class="' + cls + '" data-ma="' + esc(o.ma) + '"><td onclick="event.stopPropagation()"><input type="checkbox" class="chk" data-c="' + esc(o.ma) + '"' + (SEL[o.ma] ? ' checked' : '') + '></td>' +
       '<td><b>' + esc(o.ma) + '</b><div class="sub">' + esc(o.tg) + '</div></td>' +
-      '<td><div class="nm">' + esc(o.ten) + (o.ch ? ' · ' + esc(o.ch) : '') + '</div><div class="sub">' + esc(o.sdt) + '</div></td>' +
+      '<td><div class="nm">' + esc(o.ten) + (o.ch ? ' · ' + esc(o.ch) : '') + (o.xhd ? '<span class="hdb ' + (o.hds ? 'da' : 'can') + '">' + (o.hds ? 'HĐ ' + esc(o.hds) : 'Cần xuất HĐ') + '</span>' : '') + '</div><div class="sub">' + esc(o.sdt) + '</div></td>' +
       '<td>' + esc(o.tinh) + '</td><td class="r">' + o.sl + '<div class="sub">' + o.somau + ' mẫu</div></td><td class="r"><b>' + (vnd(o.tong) || '—') + '</b></td>' +
       '<td><span class="pay pay-' + py.k + '">' + esc(py.t) + '</span></td><td>' + esc(o.dvvc) + (o.mavd ? '<div class="sub">' + esc(o.mavd) + '</div>' : '') + '</td>' +
       '<td><span class="tag t-' + esc(String(o.tt).split(' ')[0]) + '">' + esc(o.tt) + '</span></td></tr>';
@@ -370,12 +375,12 @@ $('ol').addEventListener('click', function (e) { var tr = e.target.closest('tr[d
 /* ---- Màn hình sửa / tạo đơn ---- */
 function orderObj(o) {
   var it = (LBY[o.ma] || []).map(function (l) { return { s: l.s, m: l.m, t: l.t, q: l.q, g: l.g }; });
-  return { ma: o.ma, tg: o.tg, ten: o.ten, cuahang: o.ch, sdt: o.sdt, tinh: o.tinh, diachi: o.dc, ghichu: o.gc, items: it, giam: o.giam, ship: o.ship, dathu: o.dathu, dvvc: o.dvvc, mavd: o.mavd, tt: o.tt, noibo: o.noibo, nguon: o.nguon };
+  return { ma: o.ma, tg: o.tg, ten: o.ten, cuahang: o.ch, sdt: o.sdt, tinh: o.tinh, diachi: o.dc, ghichu: o.gc, items: it, giam: o.giam, ship: o.ship, dathu: o.dathu, dvvc: o.dvvc, mavd: o.mavd, tt: o.tt, noibo: o.noibo, nguon: o.nguon, xhd: !!o.xhd, hdl: o.hdl || 'CN', hdt: o.hdt || '', hdm: o.hdm || '', hdd: o.hdd || '', hde: o.hde || '', hds: o.hds || '' };
 }
 function totals(d) { var sl = 0, tien = 0; d.items.forEach(function (x) { sl += num(x.q); tien += num(x.q) * num(x.g); }); var tong = Math.max(0, tien - num(d.giam) + num(d.ship)); return { sl: sl, tien: tien, tong: tong, con: Math.max(0, tong - num(d.dathu)) }; }
 function openOrder(ma) {
   var o = ma && ORD.filter(function (x) { return x.ma === ma; })[0];
-  ED = o ? orderObj(o) : { ma: '', tg: '', ten: '', cuahang: '', sdt: '', tinh: '', diachi: '', ghichu: '', items: [], giam: 0, ship: 0, dathu: 0, dvvc: '', mavd: '', tt: 'Đã xác nhận', noibo: '' };
+  ED = o ? orderObj(o) : { ma: '', tg: '', ten: '', cuahang: '', sdt: '', tinh: '', diachi: '', ghichu: '', items: [], giam: 0, ship: 0, dathu: 0, dvvc: '', mavd: '', tt: 'Đã xác nhận', noibo: '', xhd: false, hdl: 'CN', hdt: '', hdm: '', hdd: '', hde: '', hds: '' };
   renderEditor(); $('om').classList.add('on');
 }
 function fld(lab, k, w, ph) { return '<div' + (w ? ' style="grid-column:span ' + w + '"' : '') + '><label>' + lab + '</label><input class="f" value="' + esc(ED[k]) + '" oninput="ED.' + k + '=this.value"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '></div>'; }
@@ -383,7 +388,7 @@ function renderEditor() {
   var d = ED, z = String(d.sdt || '').replace(/^\+?84/, '0');
   var h = '<button class="x" onclick="closeM(\'om\')">×</button><h2>' + (d.ma ? 'Đơn ' + esc(d.ma) + ' <span class="tag t-' + esc(String(d.tt).split(' ')[0]) + '">' + esc(d.tt) + '</span><span class="sub" style="font-size:12px;color:var(--mut);font-weight:400">' + esc(d.tg) + (d.nguon ? ' · ' + esc(d.nguon) : '') + '</span>' : 'Tạo đơn mới') + '</h2>' +
     '<div class="sh2" style="margin-top:0">Khách hàng / người nhận</div><div class="g2">' + fld('Họ tên *', 'ten') + fld('Cửa hàng / đại lý', 'cuahang') + fld('Số điện thoại *', 'sdt') + fld('Tỉnh / thành', 'tinh') + '</div>' +
-    '<div class="g2" style="margin-top:8px">' + fld('Địa chỉ nhận hàng *', 'diachi', 3) + '</div><div class="g2" style="margin-top:8px">' + fld('Ghi chú của khách', 'ghichu', 3) + '</div>' +
+    '<div class="g2" style="margin-top:8px">' + fld('Địa chỉ nhận hàng *', 'diachi', 3) + '</div><div class="g2" style="margin-top:8px">' + fld('Ghi chú của khách', 'ghichu', 3) + '</div>' + hdEd() +
     (d.sdt ? '<p class="note2"><a href="tel:' + esc(d.sdt) + '">Gọi</a> · <a href="https://zalo.me/' + esc(z) + '" target="_blank">Zalo</a> · <a target="_blank" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([d.diachi, d.tinh].join(', ')) + '">Bản đồ</a></p>' : '') +
     '<div class="sh2">Hàng hoá</div><div class="it"><table><thead><tr><th style="width:70px">STT</th><th>Tên sản phẩm</th><th style="width:90px">SL</th><th style="width:130px">Đơn giá</th><th class="r" style="width:120px">Thành tiền</th><th style="width:36px"></th></tr></thead><tbody id="edit">' + itemRows() + '</tbody></table></div>' +
     '<div style="display:flex;gap:8px;margin-top:8px"><input class="f" list="spdl" id="addsp" placeholder="+ Thêm sản phẩm: gõ STT, tên hoặc mã…" style="flex:1"><button class="btn sec" onclick="addItem()">Thêm</button></div>' +
@@ -488,7 +493,7 @@ function pageBan(d) {
   var bank = SET.STK ? '<div class="bank">Chuyển khoản: <b>' + esc(SET.NGANHANG) + ' – ' + esc(SET.STK) + '</b>' + (SET.CHUTK ? ' – ' + esc(SET.CHUTK) : '') + '<br>Nội dung: <b>' + esc(d.ma) + ' ' + esc(d.sdt) + '</b></div>' : '';
   return '<section class="pg doc">' + shopHead('PHIẾU BÁN HÀNG', d.ma || '(chưa lưu)', dateOf(d)) +
     '<div class="kh"><div>Khách hàng: <b>' + esc(d.ten) + '</b>' + (d.cuahang ? ' – ' + esc(d.cuahang) : '') + '</div><div>Điện thoại: ' + esc(d.sdt) + '</div><div>Địa chỉ: ' + esc(d.diachi) + (d.tinh ? ', ' + esc(d.tinh) : '') + '</div></div>' +
-    '<table class="tb"><thead><tr><th class="c">#</th><th>Tên hàng</th><th class="c">ĐVT</th><th class="r">SL</th><th class="r">Đơn giá</th><th class="r">Thành tiền</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    hdPrint(d) + '<table class="tb"><thead><tr><th class="c">#</th><th>Tên hàng</th><th class="c">ĐVT</th><th class="r">SL</th><th class="r">Đơn giá</th><th class="r">Thành tiền</th></tr></thead><tbody>' + rows + '</tbody></table>' +
     '<table class="tt2"><tr><td>Tổng số lượng</td><td class="r">' + t.sl + '</td></tr><tr><td>Tiền hàng</td><td class="r">' + vnd0(t.tien) + '</td></tr>' +
     (num(d.giam) ? '<tr><td>Giảm giá</td><td class="r">−' + vnd0(d.giam) + '</td></tr>' : '') + (num(d.ship) ? '<tr><td>Phí vận chuyển</td><td class="r">' + vnd0(d.ship) + '</td></tr>' : '') +
     '<tr class="b"><td>TỔNG THANH TOÁN</td><td class="r">' + vnd0(t.tong) + '</td></tr>' + (num(d.dathu) ? '<tr><td>Đã thanh toán</td><td class="r">' + vnd0(d.dathu) + '</td></tr><tr class="b"><td>Còn phải thu</td><td class="r">' + vnd0(t.con) + '</td></tr>' : '') + '</table>' +
@@ -742,6 +747,32 @@ function renderDl() {
 }
 function viewDl(sdt) { $('fq').value = sdt; $('fs').value = ''; $('fp').value = ''; $('fd').value = ''; document.querySelector('nav button[data-t="don"]').click(); }
 function exportDl() { var rows = [['Đại lý', 'Cửa hàng', 'SĐT', 'Tỉnh', 'Địa chỉ', 'Số đơn', 'SL', 'Doanh thu', 'Đã thu', 'Công nợ', 'Đặt gần nhất']]; dlData().forEach(function (d) { rows.push([d.ten, d.ch, d.sdt, d.tinh, d.dc, d.don, d.sl, d.tien, d.thu, d.no, d.lastS]); }); csv(rows, 'dai-ly.csv'); }
+
+/* ================= HOÁ ĐƠN ================= */
+function hdEd() {
+  var d = ED, dn = d.hdl === 'DN';
+  return '<div class="sh2">Thông tin xuất hoá đơn</div><label style="display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer"><input type="checkbox" class="chk"' + (d.xhd ? ' checked' : '') + ' onchange="ED.xhd=this.checked;ED.hdt=ED.hdt||ED.ten;ED.hdd=ED.hdd||[ED.diachi,ED.tinh].filter(Boolean).join(\', \');renderEditor()"> Khách yêu cầu xuất hoá đơn</label>' +
+    (d.xhd ? '<div class="hdsec"><div class="g2"><div><label>Loại người mua</label><select class="f" onchange="ED.hdl=this.value;renderEditor()"><option value="CN"' + (dn ? '' : ' selected') + '>Cá nhân</option><option value="DN"' + (dn ? ' selected' : '') + '>Doanh nghiệp / hộ KD</option></select></div>' +
+      fld(dn ? 'Tên đơn vị' : 'Họ tên người mua', 'hdt') + fld(dn ? 'Mã số thuế (10 / 13 số)' : 'Số CCCD (12 số)', 'hdm') + fld('Email nhận hoá đơn', 'hde') + '</div>' +
+      '<div class="g2" style="margin-top:8px">' + fld('Địa chỉ trên hoá đơn', 'hdd', 2) + fld('Số hoá đơn đã xuất', 'hds', 1, 'Điền sau khi xuất HĐ điện tử') + '</div>' +
+      (!dn && d.hdm && !/^\d{12}$/.test(String(d.hdm).replace(/\s/g, '')) ? '<p class="note2" style="color:#c2401f">Số CCCD thường gồm 12 chữ số – kiểm tra lại.</p>' : '') +
+      (dn && d.hdm && !/^\d{10}(-?\d{3})?$/.test(String(d.hdm).replace(/\s/g, '')) ? '<p class="note2" style="color:#c2401f">Mã số thuế gồm 10 hoặc 13 chữ số – kiểm tra lại.</p>' : '') + '</div>' : '');
+}
+function maskId(s) { s = String(s || ''); return s.length > 4 ? s.slice(0, 3) + '•'.repeat(Math.max(0, s.length - 7)) + s.slice(-4) : s; }
+function hdPrint(d) {
+  if (!d.xhd) return '';
+  var dn = d.hdl === 'DN';
+  return '<div class="bank" style="margin:0 0 3mm"><b>Thông tin xuất hoá đơn</b> (' + (dn ? 'doanh nghiệp' : 'cá nhân') + '): ' + esc(d.hdt) + ' · ' + (dn ? 'MST: ' + esc(d.hdm) : 'CCCD: ' + esc(maskId(d.hdm))) +
+    (d.hdd ? '<br>Địa chỉ: ' + esc(d.hdd) : '') + (d.hde ? ' · Email: ' + esc(d.hde) : '') + (d.hds ? '<br>Số hoá đơn: <b>' + esc(d.hds) + '</b>' : '') + '</div>';
+}
+function exportHd() {
+  var rows = [['Mã đơn', 'Ngày', 'Trạng thái đơn', 'Loại người mua', 'Tên người mua / đơn vị', 'MST / CCCD', 'Địa chỉ hoá đơn', 'Email', 'Tiền hàng', 'Giảm giá', 'Phí ship', 'Tổng thanh toán', 'Số HĐ đã xuất', 'STT', 'Mã SP', 'Tên hàng', 'ĐVT', 'SL', 'Đơn giá', 'Thành tiền']];
+  ORD.filter(function (o) { return o.xhd && o.tt !== 'Huỷ'; }).forEach(function (o) {
+    (LBY[o.ma] || []).forEach(function (l) { rows.push([o.ma, dateOf(o), o.tt, o.hdl === 'DN' ? 'Doanh nghiệp' : 'Cá nhân', o.hdt, "'" + o.hdm, o.hdd, o.hde, o.tien, o.giam, o.ship, o.tong, o.hds, l.s, l.m, l.t, dvt(l.s), l.q, l.g, l.q * l.g]); });
+  });
+  if (rows.length < 2) return alert('Chưa có đơn nào yêu cầu xuất hoá đơn.');
+  csv(rows, 'yeu-cau-hoa-don.csv');
+}
 
 /* ================= CÀI ĐẶT ================= */
 var SKEYS = ['TEN_SHOP', 'HOTLINE', 'ZALO', 'DIACHI', 'MST', 'NGANHANG', 'STK', 'CHUTK', 'CHAN_PHIEU', 'NGUONG_HET', 'KHO_PHIEU'];
