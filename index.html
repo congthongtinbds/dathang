@@ -154,7 +154,7 @@ textarea.f{min-height:64px;resize:vertical}
 <body>
 <header>
   <div class="top"><h1 id="shopname">Kho Đồ Chơi &amp; Mô Hình</h1><button class="inst" id="inst">Cài app</button></div>
-  <p>Chọn mẫu, nhập số lượng rồi bấm <b>Đặt hàng</b>. Hỗ trợ: <a id="hl" href="tel:0813631111">0813631111</a> · <a id="zl" href="https://zalo.me/0813631111">Zalo</a></p>
+  <p>Chọn mẫu, nhập số lượng rồi bấm <b>Đặt hàng</b>. Hỗ trợ<span id="nvn"></span>: <a id="hl" href="tel:0813631111">0813631111</a> · <a id="zl" href="https://zalo.me/0813631111">Zalo</a></p>
 </header>
 <div class="bar">
   <input id="q" class="search" type="search" placeholder="Tìm tên, mã SP, STT hoặc mã vạch…" autocomplete="off">
@@ -171,13 +171,16 @@ textarea.f{min-height:64px;resize:vertical}
 
 <script>
 var QS = new URLSearchParams(location.search);
+var NV = (QS.get('nv') || '').trim().toUpperCase(); (function () { try { if (NV) localStorage.setItem('qr_nv', NV); else NV = localStorage.getItem('qr_nv') || ''; } catch (e) {} })();
 var SP0 = QS.get('sp') || '', NHOM0 = QS.get('nhom') || '', ZALO = '0813631111', PUB = location.href.split('?')[0].replace(/index\.html$/, ''), IN_APP = '';
 google.script.run.withSuccessHandler(function (c) {
   if (!c || !c.shop) return; ZALO = c.shop.ZALO || ZALO;
   document.getElementById('shopname').textContent = c.shop.TEN_SHOP; document.title = 'Đặt hàng – ' + c.shop.TEN_SHOP;
   var h = document.getElementById('hl'); h.textContent = c.shop.HOTLINE; h.href = 'tel:' + c.shop.HOTLINE;
   document.getElementById('zl').href = 'https://zalo.me/' + ZALO;
-}).getConfig();
+  if (c.nv) { ZALO = c.nv.zalo || c.nv.sdt; document.getElementById('nvn').textContent = ' (' + c.nv.ten + ')'; h.textContent = c.nv.sdt; h.href = 'tel:' + c.nv.sdt; document.getElementById('zl').href = 'https://zalo.me/' + ZALO; }
+  else if (NV) { NV = ''; try { localStorage.removeItem('qr_nv'); } catch (e) {} }
+}).getConfig(NV);
 /* Cài app (PWA) */
 var DEFER = null, STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); DEFER = e; });
@@ -401,7 +404,7 @@ function hdType() {
 }
 function submitOrder() {
   var o = { ten: $('f_ten').value.trim(), cuahang: $('f_ch').value.trim(), sdt: $('f_sdt').value.replace(/\s|\./g, ''), tinh: $('f_tinh').value.trim(),
-    diachi: $('f_dc').value.trim(), ghichu: $('f_gc').value.trim(), nguon: SP0 ? 'QR sp ' + SP0 : (NHOM0 ? 'QR nhóm ' + NHOM0 : 'QR chung') };
+    diachi: $('f_dc').value.trim(), ghichu: $('f_gc').value.trim(), nguon: (SP0 ? 'QR sp ' + SP0 : (NHOM0 ? 'QR nhóm ' + NHOM0 : 'QR chung')) + (NV ? ' · ' + NV : ''), nv: NV };
   if (!o.ten || !o.sdt || !o.diachi) { $('f_err').textContent = 'Vui lòng nhập họ tên, số điện thoại và địa chỉ.'; return; }
   if (!/^(\+?84|0)\d{8,10}$/.test(o.sdt)) { $('f_err').textContent = 'Số điện thoại chưa đúng.'; return; }
   if ($('hd_on') && $('hd_on').checked) {

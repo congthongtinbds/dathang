@@ -147,7 +147,7 @@ header h1{white-space:nowrap}
 
 <div id="app" class="hide">
 <header><h1>Quản lý bán hàng</h1>
-  <nav><button data-t="don" class="on">Đơn hàng</button><button data-t="kho">Kho hàng</button><button data-t="ds">Doanh số</button><button data-t="dl">Đại lý</button><button data-t="sp">Sản phẩm</button><button data-t="qr">Mã QR</button><button data-t="cd">Cài đặt</button></nav>
+  <nav><button data-t="don" class="on">Đơn hàng</button><button data-t="kho">Kho hàng</button><button data-t="ds">Doanh số</button><button data-t="dl">Đại lý</button><button data-t="nv">Nhân viên</button><button data-t="sp">Sản phẩm</button><button data-t="qr">Mã QR</button><button data-t="cd">Cài đặt</button></nav>
 </header>
 <div class="wrap">
   <section id="t-don">
@@ -157,6 +157,7 @@ header h1{white-space:nowrap}
       <select id="fp" class="f"><option value="">Mọi thanh toán</option><option value="no">Chưa thu</option><option value="part">Thu một phần</option><option value="ok">Đã thu đủ</option><option value="na">Chưa báo giá</option></select>
       <select id="fd" class="f"><option value="">Mọi ngày</option><option value="0">Hôm nay</option><option value="7">7 ngày</option><option value="30">30 ngày</option></select>
       <select id="fh" class="f"><option value="">Hoá đơn: tất cả</option><option value="can">Cần xuất hoá đơn</option><option value="da">Đã xuất hoá đơn</option></select>
+      <select id="fnv" class="f"><option value="">Nhân viên: tất cả</option></select>
       <input id="fq" class="f" placeholder="Tìm mã đơn, tên, SĐT, địa chỉ, mã vận đơn, mã SP…" style="flex:1;min-width:200px">
     </div>
     <div class="tool">
@@ -203,6 +204,7 @@ header h1{white-space:nowrap}
       <div class="card3"><h3>Sản phẩm bán chạy</h3><table><thead><tr><th>Sản phẩm</th><th class="r">SL</th><th class="r">Doanh thu</th></tr></thead><tbody id="dtp"></tbody></table></div>
       <div class="card3"><h3>Đại lý mua nhiều</h3><table><thead><tr><th>Đại lý</th><th class="r">Đơn</th><th class="r">Doanh thu</th></tr></thead><tbody id="dtd"></tbody></table></div>
       <div class="card3"><h3>Theo nhóm hàng</h3><table><thead><tr><th>Nhóm</th><th class="r">SL</th><th class="r">Doanh thu</th></tr></thead><tbody id="dtn"></tbody></table></div>
+      <div class="card3"><h3>Theo nhân viên</h3><table><thead><tr><th>Nhân viên</th><th class="r">Đơn</th><th class="r">Doanh thu</th></tr></thead><tbody id="dtnv"></tbody></table></div>
       <div class="card3"><h3>Theo tỉnh / thành</h3><table><thead><tr><th>Tỉnh</th><th class="r">Đơn</th><th class="r">Doanh thu</th></tr></thead><tbody id="dtt"></tbody></table></div>
     </div>
     <p class="note2">Doanh thu tính theo tổng thanh toán của đơn (sau giảm giá, cộng phí ship), không tính đơn Huỷ. Đơn chưa có giá được tính số lượng nhưng doanh thu bằng 0.</p>
@@ -249,6 +251,18 @@ header h1{white-space:nowrap}
       <button class="btn sec" onclick="window.print()">In bảng QR</button>
     </div>
     <p class="noprint" style="font-size:12.5px;color:var(--mut);margin:-4px 0 8px">Bấm vào từng mã để tải riêng ảnh đó.</p><div class="qgrid" id="qg"></div>
+  </section>
+
+  <section id="t-nv" class="hide">
+    <div class="tool">
+      <button class="btn acc" onclick="editNv()">+ Thêm nhân viên</button>
+      <span style="flex:1"></span>
+      <select id="nr" class="f"><option value="today">Hôm nay</option><option value="7">7 ngày qua</option><option value="30" selected>30 ngày qua</option><option value="m0">Tháng này</option><option value="m1">Tháng trước</option><option value="y0">Năm nay</option><option value="all">Toàn bộ</option></select>
+      <button class="btn sec" onclick="exportNv()">Xuất CSV</button>
+    </div>
+    <div class="kpi" id="nkpi"></div>
+    <div class="tbl"><table><thead><tr><th>Mã</th><th>Nhân viên</th><th>SĐT</th><th class="r">Đơn</th><th class="r">SL</th><th class="r">Doanh thu</th><th class="r">Đã thu</th><th class="r">Công nợ</th><th class="r">Đại lý</th><th class="r">Đại lý mới</th><th></th></tr></thead><tbody id="nvt"></tbody></table></div>
+    <p class="note2">Mỗi nhân viên có link / mã QR riêng. Đại lý quét QR của nhân viên nào thì app ghi nhớ nhân viên đó: số điện thoại, Zalo trên app là của nhân viên và mọi đơn sau đó (kể cả mở từ app đã cài) đều tính cho nhân viên đó. Trong từng đơn vẫn đổi được nhân viên phụ trách.</p>
   </section>
 
   <section id="t-cd" class="hide">
@@ -315,18 +329,19 @@ function login(p) {
   b.onclick = function () {
     TAB = b.dataset.t;
     [].forEach.call(document.querySelectorAll('nav button'), function (x) { x.classList.toggle('on', x === b); });
-    ['don', 'kho', 'ds', 'dl', 'sp', 'qr', 'cd'].forEach(function (t) { $('t-' + t).classList.toggle('hide', t !== TAB); });
+    ['don', 'kho', 'ds', 'dl', 'nv', 'sp', 'qr', 'cd'].forEach(function (t) { $('t-' + t).classList.toggle('hide', t !== TAB); });
     if (TAB === 'qr') { mainQR(); if (!SP.length) loadProducts(); }
     if (TAB === 'cd') fillSettings();
     renderTab();
   };
 });
-function renderTab() { if (TAB === 'don') renderOrders(); if (TAB === 'kho') renderKho(); if (TAB === 'ds') renderDs(); if (TAB === 'dl') renderDl(); }
+function renderTab() { if (TAB === 'don') renderOrders(); if (TAB === 'kho') renderKho(); if (TAB === 'ds') renderDs(); if (TAB === 'dl') renderDl(); if (TAB === 'nv') renderNv(); }
 
 function loadAll(quiet) {
   return run('adminData', PASS).then(function (j) {
     var d = JSON.parse(j); ORD = d.orders.reverse(); LINES = d.lines; KHO = d.kho; if (d.settings) SET = d.settings;
     LBY = {}; LINES.forEach(function (l) { (LBY[l.ma] = LBY[l.ma] || []).push(l); });
+    STAFF = d.staff || []; nvOpts();
     renderTab();
   }).catch(function (e) { if (!quiet) toast(e.message); });
 }
@@ -339,7 +354,7 @@ function payOf(o) {
   return { k: 'no', t: 'Chưa thu' };
 }
 var SEL = {};
-['fs', 'fp', 'fd', 'fh'].forEach(function (id) { $(id).onchange = renderOrders; }); $('fq').oninput = renderOrders;
+['fs', 'fp', 'fd', 'fh', 'fnv'].forEach(function (id) { $(id).onchange = renderOrders; }); $('fq').oninput = renderOrders;
 $('chkall').onchange = function () { var on = this.checked; curList().forEach(function (o) { if (on) SEL[o.ma] = 1; else delete SEL[o.ma]; }); renderOrders(); };
 function curList() {
   var s = $('fs').value, p = $('fp').value, d = $('fd').value, q = nrm($('fq').value.trim());
@@ -347,6 +362,7 @@ function curList() {
   return ORD.filter(function (o) {
     if (s && o.tt !== s) return false; if (p && payOf(o).k !== p) return false; if (from && o.ts < from) return false;
     var fh = $('fh').value; if (fh === 'can' && !(o.xhd && !o.hds && o.tt !== 'Huỷ')) return false; if (fh === 'da' && !(o.xhd && o.hds)) return false;
+    var fnv = $('fnv').value; if (fnv === '-' && o.nv) return false; if (fnv && fnv !== '-' && o.nv !== fnv) return false;
     return !q || nrm([o.ma, o.ten, o.ch, o.sdt, o.dc, o.tinh, o.ct, o.mavd, o.dvvc].join(' ')).indexOf(q) >= 0;
   });
 }
@@ -365,7 +381,7 @@ function renderOrders() {
     var py = payOf(o), cls = o.tt === 'Mới' ? 'new' : o.tt === 'Huỷ' ? 'huy' : o.tt === 'Hoàn thành' ? 'done' : '';
     return '<tr class="' + cls + '" data-ma="' + esc(o.ma) + '"><td onclick="event.stopPropagation()"><input type="checkbox" class="chk" data-c="' + esc(o.ma) + '"' + (SEL[o.ma] ? ' checked' : '') + '></td>' +
       '<td><b>' + esc(o.ma) + '</b><div class="sub">' + esc(o.tg) + '</div></td>' +
-      '<td><div class="nm">' + esc(o.ten) + (o.ch ? ' · ' + esc(o.ch) : '') + (o.xhd ? '<span class="hdb ' + (o.hds ? 'da' : 'can') + '">' + (o.hds ? 'HĐ ' + esc(o.hds) : 'Cần xuất HĐ') + '</span>' : '') + '</div><div class="sub">' + esc(o.sdt) + '</div></td>' +
+      '<td><div class="nm">' + esc(o.ten) + (o.ch ? ' · ' + esc(o.ch) : '') + (o.xhd ? '<span class="hdb ' + (o.hds ? 'da' : 'can') + '">' + (o.hds ? 'HĐ ' + esc(o.hds) : 'Cần xuất HĐ') + '</span>' : '') + '</div><div class="sub">' + esc(o.sdt) + (o.tennv ? ' · <b style="color:#2556b8">NV: ' + esc(o.tennv) + '</b>' : '') + '</div></td>' +
       '<td>' + esc(o.tinh) + '</td><td class="r">' + o.sl + '<div class="sub">' + o.somau + ' mẫu</div></td><td class="r"><b>' + (vnd(o.tong) || '—') + '</b></td>' +
       '<td><span class="pay pay-' + py.k + '">' + esc(py.t) + '</span></td><td>' + esc(o.dvvc) + (o.mavd ? '<div class="sub">' + esc(o.mavd) + '</div>' : '') + '</td>' +
       '<td><span class="tag t-' + esc(String(o.tt).split(' ')[0]) + '">' + esc(o.tt) + '</span></td></tr>';
@@ -377,12 +393,12 @@ $('ol').addEventListener('click', function (e) { var tr = e.target.closest('tr[d
 /* ---- Màn hình sửa / tạo đơn ---- */
 function orderObj(o) {
   var it = (LBY[o.ma] || []).map(function (l) { return { s: l.s, m: l.m, t: l.t, q: l.q, g: l.g }; });
-  return { ma: o.ma, tg: o.tg, ten: o.ten, cuahang: o.ch, sdt: o.sdt, tinh: o.tinh, diachi: o.dc, ghichu: o.gc, items: it, giam: o.giam, ship: o.ship, dathu: o.dathu, dvvc: o.dvvc, mavd: o.mavd, tt: o.tt, noibo: o.noibo, nguon: o.nguon, xhd: !!o.xhd, hdl: o.hdl || 'CN', hdt: o.hdt || '', hdm: o.hdm || '', hdd: o.hdd || '', hde: o.hde || '', hds: o.hds || '', hdtc: o.hdtc || '', hdtt: o.hdtt || '', hdkh: o.hdkh || '' };
+  return { ma: o.ma, tg: o.tg, ten: o.ten, cuahang: o.ch, sdt: o.sdt, tinh: o.tinh, diachi: o.dc, ghichu: o.gc, items: it, giam: o.giam, ship: o.ship, dathu: o.dathu, dvvc: o.dvvc, mavd: o.mavd, tt: o.tt, noibo: o.noibo, nguon: o.nguon, xhd: !!o.xhd, hdl: o.hdl || 'CN', hdt: o.hdt || '', hdm: o.hdm || '', hdd: o.hdd || '', hde: o.hde || '', hds: o.hds || '', hdtc: o.hdtc || '', hdtt: o.hdtt || '', hdkh: o.hdkh || '', nv: o.nv || '' };
 }
 function totals(d) { var sl = 0, tien = 0; d.items.forEach(function (x) { sl += num(x.q); tien += num(x.q) * num(x.g); }); var tong = Math.max(0, tien - num(d.giam) + num(d.ship)); return { sl: sl, tien: tien, tong: tong, con: Math.max(0, tong - num(d.dathu)) }; }
 function openOrder(ma) {
   var o = ma && ORD.filter(function (x) { return x.ma === ma; })[0];
-  ED = o ? orderObj(o) : { ma: '', tg: '', ten: '', cuahang: '', sdt: '', tinh: '', diachi: '', ghichu: '', items: [], giam: 0, ship: 0, dathu: 0, dvvc: '', mavd: '', tt: 'Đã xác nhận', noibo: '', xhd: false, hdl: 'CN', hdt: '', hdm: '', hdd: '', hde: '', hds: '' };
+  ED = o ? orderObj(o) : { ma: '', tg: '', ten: '', cuahang: '', sdt: '', tinh: '', diachi: '', ghichu: '', items: [], giam: 0, ship: 0, dathu: 0, dvvc: '', mavd: '', tt: 'Đã xác nhận', noibo: '', xhd: false, hdl: 'CN', hdt: '', hdm: '', hdd: '', hde: '', hds: '', nv: '' };
   renderEditor(); $('om').classList.add('on');
 }
 function fld(lab, k, w, ph) { return '<div' + (w ? ' style="grid-column:span ' + w + '"' : '') + '><label>' + lab + '</label><input class="f" value="' + esc(ED[k]) + '" oninput="ED.' + k + '=this.value"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '></div>'; }
@@ -396,7 +412,7 @@ function renderEditor() {
     '<div style="display:flex;gap:8px;margin-top:8px"><input class="f" list="spdl" id="addsp" placeholder="+ Thêm sản phẩm: gõ STT, tên hoặc mã…" style="flex:1"><button class="btn sec" onclick="addItem()">Thêm</button></div>' +
     '<div class="g2" style="align-items:start;margin-top:6px"><div>' +
       '<div class="sh2">Vận chuyển &amp; trạng thái</div><div class="g2"><div><label>Đơn vị vận chuyển</label><select class="f" onchange="ED.dvvc=this.value">' + DVVC.map(function (x) { return '<option' + (x === d.dvvc ? ' selected' : '') + ' value="' + esc(x) + '">' + (x || '— chọn —') + '</option>'; }).join('') + '</select></div>' + fld('Mã vận đơn', 'mavd') +
-      '<div><label>Trạng thái</label><select class="f" onchange="ED.tt=this.value">' + TT.map(function (x) { return '<option' + (x === d.tt ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div></div>' +
+      '<div><label>Nhân viên phụ trách</label><select class="f" onchange="ED.nv=this.value">' + nvSel(d.nv) + '</select></div>' + '<div><label>Trạng thái</label><select class="f" onchange="ED.tt=this.value">' + TT.map(function (x) { return '<option' + (x === d.tt ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div></div>' +
       '<div class="g2" style="margin-top:8px">' + fld('Ghi chú nội bộ (khách không thấy)', 'noibo', 2) + '</div></div>' +
       '<div><div class="sum" id="esum"></div></div></div>' +
     '<div class="mfoot"><button class="btn acc" onclick="saveOrder()">Lưu đơn</button>' +
@@ -695,10 +711,11 @@ function renderDs() {
   $('bh').textContent = 'Doanh thu theo ' + (byM ? 'tháng' : 'ngày');
   drawBars(buckets);
   // bảng xếp hạng
-  var P = {}, DL = {}, N = {}, T = {};
+  var P = {}, DL = {}, N = {}, T = {}, NVM = {};
   L.forEach(function (o) {
     var dl = DL[o.sdt] || (DL[o.sdt] = { t: o.ten + (o.ch ? ' · ' + o.ch : ''), n: 0, v: 0 }); dl.n++; dl.v += o.tong;
     var tn = o.tinh || '(chưa ghi)', tt = T[tn] || (T[tn] = { t: tn, n: 0, v: 0 }); tt.n++; tt.v += o.tong;
+    var nk = o.tennv || 'Khách tự đặt', nn = NVM[nk] || (NVM[nk] = { t: nk, n: 0, v: 0 }); nn.n++; nn.v += o.tong;
     (LBY[o.ma] || []).forEach(function (l) {
       var p = P[l.s || l.t] || (P[l.s || l.t] = { t: (l.s ? l.s + ' · ' : '') + l.t, n: 0, v: 0 }); p.n += l.q; p.v += l.q * l.g;
       var nh = (SPM[l.s] || {}).nhom || 'Khác', ng = N[nh] || (N[nh] = { t: nh, n: 0, v: 0 }); ng.n += l.q; ng.v += l.q * l.g;
@@ -708,7 +725,7 @@ function renderDs() {
     var a = Object.keys(o).map(function (k) { return o[k]; }).sort(function (x, y) { return y[by] - x[by] || y.n - x.n; }).slice(0, 10), mx = a.length ? a[0][by] || 1 : 1;
     $(id).innerHTML = a.map(function (x) { return '<tr><td>' + esc(x.t) + '<div class="hb" style="width:' + Math.max(2, Math.round((x[by] || 0) * 100 / mx)) + '%"></div></td><td class="r">' + x.n + '</td><td class="r">' + (vnd(x.v) || '—') + '</td></tr>'; }).join('') || '<tr><td colspan="3" style="color:var(--mut)">Chưa có dữ liệu.</td></tr>';
   }
-  top(P, 'n', 'dtp'); top(DL, 'v', 'dtd'); top(N, 'n', 'dtn'); top(T, 'v', 'dtt');
+  top(P, 'n', 'dtp'); top(DL, 'v', 'dtd'); top(N, 'n', 'dtn'); top(T, 'v', 'dtt'); top(NVM, 'v', 'dtnv');
   DSROWS = L;
 }
 function drawBars(B) {
@@ -808,6 +825,88 @@ function exportHd() {
   csv(rows, 'yeu-cau-hoa-don.csv');
 }
 
+/* ================= NHÂN VIÊN ================= */
+var STAFF = [];
+function nvName(ma) { var s = STAFF.filter(function (x) { return x.ma === ma; })[0]; return s ? s.ten : ma; }
+function nvOpts() {
+  var el = $('fnv'); if (!el) return; var v = el.value;
+  el.innerHTML = '<option value="">Nhân viên: tất cả</option><option value="-">Không có nhân viên</option>' + STAFF.map(function (x) { return '<option value="' + esc(x.ma) + '">' + esc(x.ma + ' · ' + x.ten) + (x.hd ? '' : ' (nghỉ)') + '</option>'; }).join('');
+  el.value = v;
+}
+function nvSel(cur) { return '<option value="">— Không có —</option>' + STAFF.filter(function (x) { return x.hd || x.ma === cur; }).map(function (x) { return '<option value="' + esc(x.ma) + '"' + (x.ma === cur ? ' selected' : '') + '>' + esc(x.ma + ' · ' + x.ten) + '</option>'; }).join(''); }
+function nvRange(v) {
+  var n = new Date(), t0 = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime(), D = 86400000, a = 0, b = t0 + D;
+  if (v === 'today') a = t0; else if (v === '7') a = t0 - 6 * D; else if (v === '30') a = t0 - 29 * D; else if (v === 'm0') a = new Date(n.getFullYear(), n.getMonth(), 1).getTime();
+  else if (v === 'm1') { a = new Date(n.getFullYear(), n.getMonth() - 1, 1).getTime(); b = new Date(n.getFullYear(), n.getMonth(), 1).getTime(); } else if (v === 'y0') a = new Date(n.getFullYear(), 0, 1).getTime();
+  return { a: a, b: b };
+}
+function nvStats() {
+  var R = nvRange($('nr').value), M = {}, first = {};
+  ORD.slice().sort(function (x, y) { return x.ts - y.ts; }).forEach(function (o) { if (o.tt !== 'Huỷ' && o.sdt && !first[o.sdt]) first[o.sdt] = o; });
+  function g(k) { return M[k] || (M[k] = { don: 0, sl: 0, tien: 0, thu: 0, no: 0, dl: {}, moi: 0 }); }
+  STAFF.forEach(function (x) { g(x.ma); }); g('');
+  ORD.forEach(function (o) {
+    if (o.tt === 'Huỷ' || o.ts < R.a || o.ts >= R.b) return;
+    var r = g(o.nv || ''); r.don++; r.sl += o.sl; r.tien += o.tong; r.thu += Math.min(o.dathu, o.tong || o.dathu); if (o.tong > o.dathu) r.no += o.tong - o.dathu;
+    if (o.sdt) { r.dl[o.sdt] = 1; if (first[o.sdt] === o) r.moi++; }
+  });
+  return M;
+}
+$('nr').onchange = renderNv;
+function renderNv() {
+  var M = nvStats(), tot = { tien: 0, don: 0 }, nvTien = 0;
+  Object.keys(M).forEach(function (k) { tot.tien += M[k].tien; tot.don += M[k].don; if (k) nvTien += M[k].tien; });
+  $('nkpi').innerHTML = '<div><b>' + STAFF.filter(function (x) { return x.hd; }).length + '</b><span>Nhân viên đang làm</span></div><div><b>' + vnd0(tot.tien) + '</b><span>Tổng doanh thu kỳ này</span></div>' +
+    '<div class="good"><b>' + vnd0(nvTien) + '</b><span>Doanh thu qua nhân viên' + (tot.tien ? ' (' + Math.round(nvTien * 100 / tot.tien) + '%)' : '') + '</span></div><div><b>' + vnd0(M[''].tien) + '</b><span>Khách tự đặt (không qua NV)</span></div>';
+  var rows = STAFF.slice().sort(function (a, b) { return M[b.ma].tien - M[a.ma].tien || (b.hd - a.hd); });
+  $('nvt').innerHTML = rows.map(function (x) {
+    var r = M[x.ma];
+    return '<tr' + (x.hd ? '' : ' style="opacity:.55"') + '><td><b>' + esc(x.ma) + '</b></td><td>' + esc(x.ten) + (x.hd ? '' : ' <span class="tag t-Huỷ">nghỉ</span>') + (x.gc ? '<div class="sub" style="font-size:11.5px;color:var(--mut)">' + esc(x.gc) + '</div>' : '') + '</td>' +
+      '<td><a href="tel:' + esc(x.sdt) + '">' + esc(x.sdt) + '</a></td><td class="r">' + r.don + '</td><td class="r">' + r.sl + '</td><td class="r"><b>' + (vnd(r.tien) || '—') + '</b></td><td class="r">' + (vnd(r.thu) || '') + '</td>' +
+      '<td class="r ' + (r.no ? 'lowq' : '') + '">' + (vnd(r.no) || '') + '</td><td class="r">' + Object.keys(r.dl).length + '</td><td class="r">' + (r.moi || '') + '</td>' +
+      '<td style="white-space:nowrap"><button class="btn sm" onclick="nvQR(\'' + esc(x.ma) + '\')">Mã QR</button> <button class="btn sec sm" onclick="editNv(\'' + esc(x.ma) + '\')">Sửa</button> <button class="btn sec sm" onclick="nvView(\'' + esc(x.ma) + '\')">Xem đơn</button></td></tr>';
+  }).join('') + '<tr><td>—</td><td><i>Khách tự đặt (không qua nhân viên)</i></td><td></td><td class="r">' + M[''].don + '</td><td class="r">' + M[''].sl + '</td><td class="r"><b>' + (vnd(M[''].tien) || '—') + '</b></td><td class="r">' + (vnd(M[''].thu) || '') + '</td><td class="r">' + (vnd(M[''].no) || '') + '</td><td class="r">' + Object.keys(M[''].dl).length + '</td><td class="r">' + (M[''].moi || '') + '</td><td><button class="btn sec sm" onclick="nvView(\'-\')">Xem đơn</button></td></tr>' +
+    (STAFF.length ? '' : '<tr><td colspan="11" style="color:var(--mut)">Chưa có nhân viên – bấm "+ Thêm nhân viên".</td></tr>');
+}
+function nvView(ma) { $('fnv').value = ma; $('fq').value = ''; $('fs').value = ''; $('fp').value = ''; $('fd').value = ''; document.querySelector('nav button[data-t="don"]').click(); }
+function exportNv() {
+  var M = nvStats(), rows = [['Mã NV', 'Tên', 'SĐT', 'Trạng thái', 'Số đơn', 'SL', 'Doanh thu', 'Đã thu', 'Công nợ', 'Số đại lý', 'Đại lý mới']];
+  STAFF.forEach(function (x) { var r = M[x.ma]; rows.push([x.ma, x.ten, x.sdt, x.hd ? 'Đang làm' : 'Nghỉ', r.don, r.sl, r.tien, r.thu, r.no, Object.keys(r.dl).length, r.moi]); });
+  var r = M['']; rows.push(['', 'Khách tự đặt', '', '', r.don, r.sl, r.tien, r.thu, r.no, Object.keys(r.dl).length, r.moi]);
+  csv(rows, 'doanh-so-nhan-vien.csv');
+}
+function editNv(ma) {
+  var x = STAFF.filter(function (s) { return s.ma === ma; })[0] || { ma: '', ten: '', sdt: '', zalo: '', email: '', hd: true, gc: '' };
+  $('kmbox').innerHTML = '<button class="x" onclick="closeM(\'km\')">×</button><h2>' + (ma ? 'Sửa nhân viên ' + esc(ma) : 'Thêm nhân viên') + '</h2>' +
+    '<div class="g2"><div><label>Mã nhân viên</label><input class="f" id="nv_ma" value="' + esc(x.ma) + '"' + (ma ? ' disabled' : ' placeholder="Để trống = tự tạo (NV01, NV02…)"') + '></div>' +
+    '<div><label>Họ tên *</label><input class="f" id="nv_ten" value="' + esc(x.ten) + '"></div>' +
+    '<div><label>Số điện thoại * (hiện trên app của đại lý)</label><input class="f" id="nv_sdt" inputmode="tel" value="' + esc(x.sdt) + '"></div>' +
+    '<div><label>Zalo (để trống = trùng SĐT)</label><input class="f" id="nv_zalo" inputmode="tel" value="' + esc(x.zalo === x.sdt ? '' : x.zalo) + '"></div>' +
+    '<div><label>Email</label><input class="f" id="nv_em" value="' + esc(x.email) + '"></div>' +
+    '<div><label>Ghi chú (khu vực phụ trách…)</label><input class="f" id="nv_gc" value="' + esc(x.gc) + '"></div></div>' +
+    '<label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:14px"><input type="checkbox" class="chk" id="nv_hd"' + (x.hd ? ' checked' : '') + '> Đang làm việc (bỏ tick khi nhân viên nghỉ – QR của họ sẽ không còn gắn tên vào đơn mới)</label>' +
+    '<div class="mfoot"><button class="btn acc" onclick="saveNv(\'' + esc(ma || '') + '\')">Lưu</button><span class="sp"></span><button class="btn sec" onclick="closeM(\'km\')">Đóng</button></div>';
+  $('km').classList.add('on');
+}
+function saveNv(ma) {
+  var d = { ma: ma || $('nv_ma').value.trim(), ten: $('nv_ten').value.trim(), sdt: $('nv_sdt').value.trim(), zalo: $('nv_zalo').value.trim(), email: $('nv_em').value.trim(), gc: $('nv_gc').value.trim(), hd: $('nv_hd').checked };
+  run('adminSaveStaff', PASS, d).then(function (r) { STAFF = r.staff; nvOpts(); closeM('km'); toast('Đã lưu nhân viên ' + r.ma); renderNv(); if (!ma) nvQR(r.ma); })
+    .catch(function (e) { alert(/Không hỗ trợ/.test(e.message) ? 'Cần cập nhật Code.gs mới (có chức năng nhân viên) và triển khai lại Apps Script.' : e.message); });
+}
+function nvQR(ma) {
+  var x = STAFF.filter(function (s) { return s.ma === ma; })[0]; if (!x) return;
+  var url = BASE + '?nv=' + encodeURIComponent(x.ma);
+  fontsOk.then(function () {
+    $('kmbox').innerHTML = '<button class="x" onclick="closeM(\'km\')">×</button><h2>Mã QR của ' + esc(x.ten) + '</h2><div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start"><div id="nvqr" style="width:300px;max-width:100%"></div>' +
+      '<div style="flex:1;min-width:220px"><p class="note2">Link riêng của nhân viên:</p><code style="word-break:break-all;background:var(--bg);padding:6px 8px;border-radius:6px;display:block">' + esc(url) + '</code>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" id="nvdl">Tải ảnh QR</button><button class="btn sec" onclick="navigator.clipboard.writeText(\'' + esc(url) + '\').then(function(){toast(\'Đã sao chép link\')})">Sao chép link</button></div>' +
+      '<p class="note2" style="margin-top:10px">Gửi ảnh QR hoặc link này cho nhân viên để in lên danh thiếp, tờ rơi, dán tại điểm bán hoặc gửi Zalo cho đại lý.</p></div></div>';
+    var im = cardImg({ url: url, kind: 'main', badge: 'NV ' + x.ma, title: 'Đặt hàng cùng ' + x.ten, sub: 'Hỗ trợ trực tiếp: ' + fmtPhone(x.sdt) + ' (Zalo)', phone: x.sdt }, 'QR-' + x.ma + '.png');
+    im.style.width = '100%'; $('nvqr').appendChild(im); $('nvdl').onclick = function () { im.click(); };
+    $('km').classList.add('on');
+  });
+}
+
 /* ================= CÀI ĐẶT ================= */
 var SKEYS = ['TEN_SHOP', 'HOTLINE', 'ZALO', 'DIACHI', 'MST', 'NGANHANG', 'STK', 'CHUTK', 'CHAN_PHIEU', 'NGUONG_HET', 'KHO_PHIEU'];
 function fillSettings() { SKEYS.forEach(function (k) { var el = $('s_' + k); if (el) el.value = SET[k] || ''; }); $('smsg').textContent = ''; if (!$('bankdl')) { var dl = document.createElement('datalist'); dl.id = 'bankdl'; dl.innerHTML = BANKS.map(function (b) { return '<option value="' + b[1] + '">'; }).join(''); document.body.appendChild(dl); } bankNote(); misaSt(); }
@@ -859,8 +958,8 @@ function csv(rows, name) {
   var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([s], { type: 'text/csv' })); a.download = name; a.click();
 }
 function exportCsv() {
-  var rows = [['Mã đơn', 'Thời gian', 'Tên', 'Cửa hàng', 'SĐT', 'Tỉnh', 'Địa chỉ', 'Ghi chú', 'Số mẫu', 'Tổng SL', 'Tiền hàng', 'Giảm giá', 'Phí ship', 'Tổng thanh toán', 'Đã thu', 'Còn lại', 'ĐVVC', 'Mã vận đơn', 'Trạng thái', 'Chi tiết']];
-  curList().forEach(function (o) { rows.push([o.ma, o.tg, o.ten, o.ch, o.sdt, o.tinh, o.dc, o.gc, o.somau, o.sl, o.tien, o.giam, o.ship, o.tong, o.dathu, Math.max(0, o.tong - o.dathu), o.dvvc, o.mavd, o.tt, o.ct]); });
+  var rows = [['Mã đơn', 'Thời gian', 'Tên', 'Cửa hàng', 'SĐT', 'Tỉnh', 'Địa chỉ', 'Ghi chú', 'Số mẫu', 'Tổng SL', 'Tiền hàng', 'Giảm giá', 'Phí ship', 'Tổng thanh toán', 'Đã thu', 'Còn lại', 'ĐVVC', 'Mã vận đơn', 'Trạng thái', 'Nhân viên', 'Chi tiết']];
+  curList().forEach(function (o) { rows.push([o.ma, o.tg, o.ten, o.ch, o.sdt, o.tinh, o.dc, o.gc, o.somau, o.sl, o.tien, o.giam, o.ship, o.tong, o.dathu, Math.max(0, o.tong - o.dathu), o.dvvc, o.mavd, o.tt, o.tennv, o.ct]); });
   csv(rows, 'don-hang.csv');
 }
 
@@ -960,7 +1059,7 @@ function qrCard(o) {
   });
   y += 20; x.fillStyle = '#f4f6fa'; x.fillRect(0, y, W, 64);
   x.fillStyle = '#1f2a4a'; x.textAlign = 'center'; x.font = '700 22px ' + F;
-  x.fillText('Hỗ trợ đặt hàng: ' + fmtPhone(SHOP.HOTLINE) + ' (Zalo)', W / 2, y + 20);
+  x.fillText('Hỗ trợ đặt hàng: ' + fmtPhone(o.phone || SHOP.HOTLINE) + ' (Zalo)', W / 2, y + 20);
   return trimCanvas(c, y + 64);
 }
 function roundRect(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
