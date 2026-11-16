@@ -68,6 +68,23 @@ main{padding:10px 12px 110px;max-width:1100px;margin:0 auto;touch-action:pan-y}
 .ph .no{position:absolute;top:6px;left:6px;background:var(--ink);color:#fff;font-size:11px;padding:2px 7px;border-radius:6px;font-weight:600}
 .rmc{position:absolute;top:5px;right:5px;width:30px;height:30px;border-radius:50%;border:0;background:#d93636;color:#fff;font-size:20px;line-height:1;font-weight:700;display:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:2}
 .card.in .rmc{display:flex}.card.in{border-color:var(--acc)}
+.mrow{display:flex;align-items:center;gap:8px;padding-top:8px}
+.msb{border:1px solid var(--ink);background:#fff;color:var(--ink);font:inherit;font-weight:700;font-size:14px;border-radius:10px;padding:9px 14px}
+.msel .msb{background:var(--ink);color:#fff}
+.mrow .mh{font-size:12px;color:var(--mut);line-height:1.3}
+.ck{display:none;position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:8px;border:2px solid var(--ink);background:rgba(255,255,255,.95);z-index:3;align-items:center;justify-content:center;font-size:19px;font-weight:900;color:#fff}
+.msel .ck{display:flex}.msel .rmc{display:none!important}.msel .step,.msel .vt{display:none}
+.msel .card{cursor:pointer;-webkit-user-select:none;user-select:none;position:relative}
+.card.pick{outline:3px solid var(--ink);outline-offset:-1px}.card.pick .ck{background:var(--ink)}.card.pick .ck:after{content:'✓'}
+.mbar{position:fixed;left:0;right:0;bottom:0;z-index:11;background:var(--ink);color:#fff;padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:none;flex-direction:column;gap:8px}
+.msel .mbar{display:flex}.msel .cart{display:none}
+.mbar .r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mbar .cnt{flex:1;font-size:14px}.mbar .cnt b{font-size:18px;color:var(--sun)}
+.mbar .lk{border:0;background:none;color:#c9d0e3;font:inherit;font-size:13px;text-decoration:underline;padding:4px}
+.mbar .qw{display:flex;align-items:center;gap:6px;background:#fff;border-radius:10px;padding:4px 6px;color:var(--ink);font-size:13px;font-weight:600}
+.mbar .qw input{width:70px;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-weight:800;text-align:center;font-size:16px}
+.mbar .add{flex:1;border:0;background:var(--acc);color:#fff;font:inherit;font-weight:800;border-radius:10px;padding:12px;font-size:15px;min-width:150px}
+.mbar .add:disabled{opacity:.45}
 .rm{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid #f3b4b4;background:#fff;color:#d93636;font-size:20px;line-height:1;font-weight:700}
 .ph .na{color:var(--mut);font-size:12px}
 .mt{padding:8px 9px 9px;display:flex;flex-direction:column;gap:3px;flex:1}
@@ -142,9 +159,11 @@ textarea.f{min-height:64px;resize:vertical}
 <div class="bar">
   <input id="q" class="search" type="search" placeholder="Tìm tên, mã SP, STT hoặc mã vạch…" autocomplete="off">
   <div id="chips" class="chips"></div>
+  <div class="mrow"><button class="msb" id="mselBtn" type="button">☑ Chọn nhiều mẫu</button><span class="mh" id="mhint">Tick nhiều mẫu rồi đặt cùng một số lượng cho tất cả</span></div>
 </div>
 <main><div id="grid" class="grid"></div><div id="msg" class="load">Đang tải sản phẩm…</div><button id="more" class="more" style="display:none">Xem thêm</button></main>
 
+<div class="mbar" id="mbar"><div class="r"><div class="cnt">Đã chọn <b id="mcnt">0</b> mẫu</div><button class="lk" id="mall" type="button">Chọn tất cả đang hiện</button><button class="lk" id="mnone" type="button">Bỏ chọn</button><button class="lk" id="mexit" type="button">Thoát</button></div><div class="r"><label class="qw">SL mỗi mẫu <input id="mq" inputmode="numeric" value="10"></label><button class="add" id="madd" type="button" disabled>Thêm vào giỏ</button></div></div>
 <div class="cart"><div class="s" id="cs"><b>0</b> mẫu · 0 sản phẩm</div><button class="btn sec" id="vc" disabled>Giỏ hàng</button><button class="btn" id="go" disabled>Đặt hàng</button></div>
 
 <div class="sheet" id="sh"><div class="panel" id="pn"></div></div>
@@ -222,7 +241,7 @@ function list() {
 }
 function card(p) {
   var q = cart[p.s] || 0;
-  return '<div class="card' + (p.s === SP0 ? ' hl' : '') + (q ? ' in' : '') + '" data-s="' + esc(p.s) + '">' +
+  return '<div class="card' + (p.s === SP0 ? ' hl' : '') + (q ? ' in' : '') + (MSEL[p.s] ? ' pick' : '') + '" data-s="' + esc(p.s) + '"><span class="ck"></span>' +
     '<div class="ph" data-z="' + esc(p.s) + '">' + (p.a ? '<img loading="lazy" src="' + esc(p.a) + '" alt="">' : '<span class="na">Ảnh đang cập nhật</span>') + '<span class="no">' + esc(p.s) + '</span><button class="rmc" data-rm="' + esc(p.s) + '" title="Bỏ khỏi giỏ hàng" aria-label="Bỏ khỏi giỏ hàng">×</button></div>' +
     '<div class="mt"><h3 data-z="' + esc(p.s) + '">' + esc(p.t) + '</h3><div class="c">' + esc(p.m) + '</div>' + (p.x ? '<button class="vt" data-z="' + esc(p.s) + '">Xem kích thước, thông số ›</button>' : '') +
     (p.g ? '<div class="g">' + vnd(p.g) + ' / ' + esc(p.d) + '</div>' : '<div class="g lh">Giá: liên hệ báo giá</div>') +
@@ -243,7 +262,44 @@ function setQ(s, q) {
   [].forEach.call(document.querySelectorAll('.card[data-s="' + CSS.escape(s) + '"]'), function (c) { c.classList.toggle('in', !!q); });
   upd();
 }
+/* ---- Chọn nhiều mẫu, đặt cùng 1 số lượng ---- */
+var MSEL = {}, MMODE = false;
+function mUpd() {
+  var n = Object.keys(MSEL).length, q = Math.floor(Number($('mq').value.replace(/[^\d]/g, '')) || 0);
+  $('mcnt').textContent = n; $('madd').disabled = !n || !q;
+  $('madd').textContent = n && q ? 'Thêm ' + n + ' mẫu × ' + q.toLocaleString('vi-VN') + ' vào giỏ' : 'Thêm vào giỏ';
+}
+function mMode(on) {
+  MMODE = on; document.body.classList.toggle('msel', on);
+  $('mselBtn').textContent = on ? '✕ Thoát chọn nhiều' : '☑ Chọn nhiều mẫu';
+  $('mhint').textContent = on ? 'Chạm vào ảnh hoặc tên mẫu để chọn / bỏ chọn' : 'Tick nhiều mẫu rồi đặt cùng một số lượng cho tất cả';
+  if (!on) { MSEL = {}; [].forEach.call(document.querySelectorAll('.card.pick'), function (c) { c.classList.remove('pick'); }); }
+  mUpd();
+}
+$('mselBtn').onclick = function () { mMode(!MMODE); };
+$('mexit').onclick = function () { mMode(false); };
+$('mnone').onclick = function () { MSEL = {}; [].forEach.call(document.querySelectorAll('.card.pick'), function (c) { c.classList.remove('pick'); }); mUpd(); };
+$('mall').onclick = function () {
+  var L = list(); L.forEach(function (p) { MSEL[p.s] = 1; });
+  page = Math.max(page, Math.ceil(L.length / PER)); render(); mUpd();
+};
+$('mq').oninput = mUpd;
+$('madd').onclick = function () {
+  var q = Math.floor(Number($('mq').value.replace(/[^\d]/g, '')) || 0), ks = Object.keys(MSEL).filter(function (s) { return byS[s]; });
+  if (!ks.length || !q) return;
+  var had = ks.filter(function (s) { return cart[s]; }).length;
+  if (had && !confirm(had + ' mẫu đã có trong giỏ. Đặt lại số lượng của các mẫu này thành ' + q + '?')) return;
+  ks.forEach(function (s) { setQ(s, q); });
+  try { LS.set('qr_mq', q); } catch (e) {}
+  mMode(false); render(); upd();
+  var d = document.createElement('div'); d.className = 'swt'; d.textContent = 'Đã thêm ' + ks.length + ' mẫu × ' + q + ' vào giỏ'; document.body.appendChild(d); setTimeout(function () { d.remove(); }, 1800);
+};
+(function () { var q = LS.get('qr_mq'); if (q) $('mq').value = q; })();
 document.addEventListener('click', function (e) {
+  if (MMODE) {
+    var mc = e.target.closest('main .card');
+    if (mc) { e.preventDefault(); e.stopPropagation(); var s = mc.dataset.s; if (MSEL[s]) delete MSEL[s]; else MSEL[s] = 1; mc.classList.toggle('pick', !!MSEL[s]); mUpd(); return; }
+  }
   var rm = e.target.closest('[data-rm]');
   if (rm) { e.stopPropagation(); setQ(rm.dataset.rm, 0); if (rm.closest('.li')) { if (!sums().n) closeSheet(); else openSheet(cartHtml()); } return; }
   var b = e.target.closest('.step button'); if (b) { var s = b.closest('[data-s]').dataset.s; setQ(s, (cart[s] || 0) + Number(b.dataset.d)); return; }
